@@ -1,0 +1,89 @@
+/* Custom CSS */
+
+/* Main container padding for better mobile experience */
+.container {
+    padding: 20px 15px;
+}
+
+/* Card styling */
+.card {
+    border: 0;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.15);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    border-bottom: 0;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Form styling */
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);
+}
+
+/* Table improvements */
+.table-responsive {
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    font-weight: 600;
+}
+
+/* Button styling */
+.btn {
+    transition: all 0.2s;
+}
+
+/* Animation for flash messages */
+.alert {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Navbar menu items hover effect */
+.nav-link {
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Focus visible styling for better accessibility */
+.btn:focus-visible, 
+.form-control:focus-visible,
+.nav-link:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .card-header {
+        padding: 0.5rem 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    h1, .h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2, .h2 {
+        font-size: 1.5rem;
+    }
+}

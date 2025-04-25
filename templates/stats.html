@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+
+{% block title %}출석 통계 - 도서실 출석 시스템{% endblock %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-secondary text-white">
+        <h2 class="h4 mb-0">
+            <i class="fas fa-chart-bar me-2"></i>출석 통계
+        </h2>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-7">
+                <div class="chart-container" style="position: relative; height:400px;">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h3 class="h5 mb-0">학생별 출석 횟수</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th>이름</th>
+                                        <th class="text-center">출석 횟수</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if attendance_counts %}
+                                        {% for name, count in attendance_counts %}
+                                        <tr>
+                                            <td>{{ name }}</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary">{{ count }}회</span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="2" class="text-center py-3">
+                                                <div class="alert alert-info mb-0">
+                                                    <i class="fas fa-info-circle me-2"></i>출석 기록이 없습니다.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <a href="/list" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>출석 명단으로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get attendance data
+    const attendanceData = {
+        labels: [{% for name, _ in attendance_counts %}'{{ name }}',{% endfor %}],
+        counts: [{% for _, count in attendance_counts %}{{ count }},{% endfor %}]
+    };
+    
+    // Create chart
+    if (attendanceData.labels.length > 0) {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: attendanceData.labels,
+                datasets: [{
+                    label: '출석 횟수',
+                    data: attendanceData.counts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
