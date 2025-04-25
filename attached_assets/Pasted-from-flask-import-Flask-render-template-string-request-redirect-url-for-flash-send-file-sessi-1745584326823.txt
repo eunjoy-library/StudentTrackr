@@ -1,0 +1,180 @@
+from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file, session
+from datetime import datetime, timedelta
+import pandas as pd
+import csv
+import os
+
+app = Flask(__name__)
+app.secret_key = 'secret_key'
+
+FILENAME = 'attendance.csv'
+BACKUP_FILE = 'attendance_backup.csv'
+LOG_FILE = 'attendance_error.log'
+EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
+STUDENT_FILE = 'students.xlsx'
+ADMIN_PASSWORD = 'admin1234'  # 관리자용 비밀번호
+
+def load_student_data():
+    try:
+        df = pd.read_excel(STUDENT_FILE, dtype={'학번': str})
+        return {row['학번'].strip(): (row['이름'].strip(), row['공강좌석번호']) for _, row in df.iterrows()}
+    except Exception as e:
+        print(f"[오류] 학생 정보를 불러올 수 없습니다: {e}")
+        return {}
+
+def check_attendance(student_id):
+    if student_id.startswith('3'):
+        return False
+    if not os.path.exists(FILENAME):
+        return False
+    with open(FILENAME, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        one_week_ago = datetime.now() - timedelta(days=7)
+        for r in reader:
+            if r['학번'] == student_id:
+                try:
+                    attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    try:
+                        attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d')
+                    except ValueError:
+                        continue
+                if attend_time >= one_week_ago:
+                    return True
+        return False
+
+def load_attendance():
+    if not os.path.exists(FILENAME):
+        return []
+    with open(FILENAME, newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+def save_attendance(student_id, name, seat):
+    file_exists = os.path.exists(FILENAME)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    row = {'출석일': now, '학번': student_id, '이름': name, '공강좌석번호': seat}
+
+    try:
+        with open(FILENAME, 'a', newline='', encoding='utf-8') as f:
+            fieldnames = ['출석일', '학번', '이름', '공강좌석번호']
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
+
+        with open(BACKUP_FILE, 'a', newline='', encoding='utf-8') as backup:
+            backup_writer = csv.DictWriter(backup, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not os.path.exists(BACKUP_FILE):
+                backup_writer.writeheader()
+            backup_writer.writerow(row)
+
+        with open(EXCEL_FRIENDLY_FILE, 'a', newline='', encoding='cp949') as excel_file:
+            excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not os.path.exists(EXCEL_FRIENDLY_FILE):
+                excel_writer.writeheader()
+            excel_writer.writerow(row)
+
+    except PermissionError:
+        error_msg = f"[{datetime.now()}] PermissionError: Could not write to {FILENAME}\n"
+        with open(LOG_FILE, 'a', encoding='utf-8') as log:
+            log.write(error_msg)
+        flash("⚠️ 출석 파일이 열려 있어 저장할 수 없습니다. Excel 파일을 닫고 다시 시도해주세요.")
+
+template = '''<html><head><meta charset="UTF-8"><title>도서실 출석</title></head><body><h1>📚 도서실 출석체크</h1><form method="post"><input type="text" name="student_id" placeholder="학번" required><input type="text" name="name" placeholder="이름" required><button type="submit">출석하기</button></form>{% with messages = get_flashed_messages() %}{% if messages %}<div>{{ messages[0] }}</div>{% endif %}{% endwith %}<br><a href="/admin">관리자 모드</a></body></html>'''
+
+list_template = '''<html><head><meta charset="UTF-8"><title>출석 명단</title>
+<script>
+function searchTable() {
+    var input, filter, table, tr, td, i, txtValue;
+    input = document.getElementById("searchInput");
+    filter = input.value.toUpperCase();
+    table = document.getElementById("attendanceTable");
+    tr = table.getElementsByTagName("tr");
+    for (i = 1; i < tr.length; i++) {
+        tr[i].style.display = "none";
+        td_array = tr[i].getElementsByTagName("td");
+        for (var j = 0; j < td_array.length; j++) {
+            td = td_array[j];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                    break;
+                }
+            }
+        }
+    }
+}
+</script>
+</head><body><h1>📋 출석 명단</h1>
+<input type="text" id="searchInput" onkeyup="searchTable()" placeholder="검색어 입력">
+<table id="attendanceTable" border="1"><thead><tr><th>출석일</th><th>학번</th><th>이름</th><th>공강좌석번호</th></tr></thead><tbody>{% for r in records %}<tr><td>{{ r['출석일'] }}</td><td>{{ r['학번'] }}</td><td>{{ r['이름'] }}</td><td>{{ r['공강좌석번호'] }}</td></tr>{% endfor %}</tbody></table><br><a href="/export">CSV 다운로드</a> | <a href="/print">출석 출력</a> | <a href="/stats">출석 통계</a> | <a href="/">메인</a></body></html>'''
+
+@app.route('/', methods=['GET', 'POST'])
+def attendance():
+    student_data = load_student_data()
+    if request.method == 'POST':
+        student_id = request.form['student_id'].strip()
+        name = request.form['name'].strip()
+
+        student_info = student_data.get(student_id)
+
+        if student_info is None:
+            flash("❌ 학번이 올바르지 않습니다. 다시 확인해주세요.")
+        elif student_info[0].replace(' ', '') != name.replace(' ', ''):
+            flash(f"❌ 입력한 이름이 학번과 일치하지 않습니다. 입력한 이름: {name}, 저장된 이름: {student_info[0]}")
+        elif check_attendance(student_id):
+            flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.")
+        else:
+            seat = student_info[1]
+            save_attendance(student_id, name, seat)
+            flash(f"✅ 출석이 완료되었습니다. 공강좌석번호: {seat}")
+        return redirect(url_for('attendance'))
+    return render_template_string(template)
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == ADMIN_PASSWORD:
+            session['admin'] = True
+            return redirect('/list')
+        else:
+            flash('❌ 비밀번호가 틀렸습니다.')
+    return '''<form method="post"><input type="password" name="password" placeholder="관리자 비밀번호"><button type="submit">확인</button></form>'''
+
+@app.route('/list')
+def list_attendance():
+    if not session.get('admin'):
+        return redirect('/admin')
+    records = sorted(load_attendance(), key=lambda x: (x['출석일'], x['학번']))
+    return render_template_string(list_template, records=records)
+
+@app.route('/export')
+def export_csv():
+    return send_file(FILENAME, as_attachment=True)
+
+@app.route('/print')
+def print_view():
+    records = load_attendance()
+    html = '<html><head><meta charset="utf-8"><title>출석 출력</title></head><body>'
+    html += '<h2>출석 명단</h2><table border="1" cellspacing="0" cellpadding="5">'
+    html += '<tr><th>출석일</th><th>학번</th><th>이름</th><th>공강좌석번호</th></tr>'
+    for r in records:
+        html += f"<tr><td>{r['출석일']}</td><td>{r['학번']}</td><td>{r['이름']}</td><td>{r['공강좌석번호']}</td></tr>"
+    html += '</table></body></html>'
+    return html
+
+@app.route('/stats')
+def stats():
+    from collections import Counter
+    records = load_attendance()
+    counts = Counter(r['이름'] for r in records)
+    html = '<h2>출석 통계</h2><ul>'
+    for name, count in counts.items():
+        html += f"<li>{name}: {count}회</li>"
+    html += '</ul><a href="/list">← 명단으로 돌아가기</a>'
+    return html
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
