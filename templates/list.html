@@ -23,6 +23,7 @@
                 <thead class="table-dark">
                     <tr>
                         <th>출석일</th>
+                        <th>교시</th>
                         <th>학번</th>
                         <th>이름</th>
                         <th>공강좌석번호</th>
@@ -33,6 +34,7 @@
                         {% for r in records %}
                         <tr>
                             <td>{{ r['출석일'] }}</td>
+                            <td>{{ r.get('교시', '-') }}</td>
                             <td>{{ r['학번'] }}</td>
                             <td>{{ r['이름'] }}</td>
                             <td>{{ r['공강좌석번호'] }}</td>
@@ -40,7 +42,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="4" class="text-center py-4">
+                            <td colspan="5" class="text-center py-4">
                                 <div class="alert alert-info mb-0">
                                     <i class="fas fa-info-circle me-2"></i>출석 기록이 없습니다.
                                 </div>
