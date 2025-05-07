@@ -11,23 +11,36 @@
                     <i class="fas fa-book me-2"></i>도서실 출석체크
                 </h1>
             </div>
-            <div class="alert alert-info m-3 p-3">
-                <div class="row align-items-center">
-                    <div class="col-12 text-center mb-2">
-                        <h4 class="mb-0 border-bottom pb-2">
-                            <i class="fas fa-calendar-day me-2"></i><span id="currentMonthDay"></span>
-                        </h4>
+            <div class="alert alert-info m-3 p-3 position-relative" style="overflow: hidden;">
+                <!-- 배경에 시계 아이콘 추가 -->
+                <div class="position-absolute" style="top: -15px; right: -15px; opacity: 0.1; font-size: 8rem;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                
+                <div class="row align-items-center position-relative">
+                    <!-- 날짜 및 시간 섹션 -->
+                    <div class="col-12 text-center mb-3">
+                        <div class="d-inline-block p-2 rounded shadow-sm bg-white time-display" style="min-width: 300px;">
+                            <h4 class="mb-0 py-1">
+                                <span id="currentMonthDay"></span>
+                            </h4>
+                        </div>
                     </div>
+                    
+                    <!-- 교시 정보 섹션 -->
                     <div class="col-12 text-center">
                         <div class="d-flex justify-content-center align-items-center">
-                            <div class="text-center p-2 rounded border border-secondary" style="background-color: rgba(255,255,255,0.7); min-width: 200px;">
-                                <div class="mb-1">
+                            <div class="text-center p-3 rounded border border-secondary shadow-sm period-time-info" 
+                                style="background-color: rgba(255,255,255,0.9); min-width: 220px;">
+                                <div class="mb-2">
                                     <span class="badge bg-dark" style="font-size: 0.9rem;">현재 교시</span>
                                 </div>
                                 <div>
-                                    <span id="currentPeriod" class="badge bg-primary" style="font-size: 1.2rem; padding: 0.5rem 0.7rem;"></span>
+                                    <span id="currentPeriod" class="badge bg-primary" 
+                                        style="font-size: 1.3rem; padding: 0.5rem 0.8rem;"></span>
                                 </div>
-                                <div class="small mt-2 fw-bold" id="periodTimeRange"></div>
+                                <div class="mt-2 fw-bold" id="periodTimeRange" 
+                                    style="font-size: 1rem;"></div>
                             </div>
                         </div>
                     </div>
@@ -128,7 +141,7 @@ function updateTimeAndPeriod() {
             <span class="badge bg-primary me-1">${month}월</span>
             <span class="badge bg-primary me-1">${day}일</span>
             <span class="badge bg-secondary me-2">(${dayOfWeek})</span>
-            <span class="fw-bold">${formattedHour}:${formattedMinute}:${formattedSecond}</span>
+            <span class="fw-bold">${formattedHour}:<span class="time-blink">${formattedMinute}</span>:<span class="seconds-blink">${formattedSecond}</span></span>
         `;
     }
     
