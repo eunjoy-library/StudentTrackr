@@ -274,11 +274,16 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ID 생성 헬퍼 함수
+    function createPeriodId(period) {
+        return period.replace(/\s/g, '-').replace('교시', '').replace('월', '-').replace('일', '');
+    }
+    
     // 복사 버튼에 이벤트 리스너 등록
     document.querySelectorAll('.copy-btn').forEach(button => {
         button.addEventListener('click', function() {
             const period = this.dataset.period;
-            const periodId = period.replace(' ', '-').replace('교시', '');
+            const periodId = createPeriodId(period);
             const studentList = document.getElementById(`student-list-${periodId}`);
             
             if (!studentList) return;
@@ -331,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const sortType = this.dataset.sort;
             const period = this.dataset.period;
-            const periodId = period.replace(' ', '-').replace('교시', '');
+            const periodId = createPeriodId(period);
             
             // 현재 버튼의 활성화 상태와 방향 확인
             let direction = 'asc';
