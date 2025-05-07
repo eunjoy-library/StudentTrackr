@@ -13,8 +13,15 @@
             </div>
             <div class="alert alert-info m-3">
                 <h4 id="currentTimeInfo" class="text-center mb-0">
-                    <i class="fas fa-clock me-2"></i><span id="currentMonthDay"></span> <span id="currentPeriod" class="badge bg-primary"></span>
+                    <i class="fas fa-calendar-day me-2"></i><span id="currentMonthDay"></span>
                 </h4>
+                <div class="text-center mt-2">
+                    <div>
+                        <span class="badge bg-dark me-2" style="font-size: 1rem;">현재 교시:</span>
+                        <span id="currentPeriod" class="badge bg-primary" style="font-size: 1.1rem; padding: 0.5rem 0.7rem;"></span>
+                    </div>
+                    <div class="small mt-2 fw-bold" id="periodTimeRange"></div>
+                </div>
             </div>
             <div class="card-body">
                 <form method="post" class="needs-validation" novalidate>
@@ -82,6 +89,9 @@ function updateTimeAndPeriod() {
         [13, 0, 14, 25], [14, 35, 15, 50]
     ];
     
+    let currentPeriodStartTime = '';
+    let currentPeriodEndTime = '';
+    
     for (let i = 0; i < schedule.length; i++) {
         const [sh, sm, eh, em] = schedule[i];
         const start = new Date(); start.setHours(sh, sm, 0);
@@ -91,6 +101,8 @@ function updateTimeAndPeriod() {
         if (current >= start && current < end) {
             periodNumber = i + 1;
             period = periodNumber + '교시';
+            currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+            currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
             break;
         }
     }
@@ -107,9 +119,21 @@ function updateTimeAndPeriod() {
         currentPeriodEl.textContent = period;
         // Change badge color based on period
         if (periodNumber > 0) {
-            currentPeriodEl.className = "badge bg-success";
+            currentPeriodEl.className = "badge bg-success" + (periodNumber > 0 ? " badge-lg" : "");
         } else {
             currentPeriodEl.className = "badge bg-secondary";
+        }
+    }
+    
+    // Update the period time range display
+    const periodTimeRangeEl = document.getElementById("periodTimeRange");
+    if (periodTimeRangeEl) {
+        if (periodNumber > 0) {
+            periodTimeRangeEl.textContent = `${currentPeriodStartTime} - ${currentPeriodEndTime}`;
+            periodTimeRangeEl.style.display = "block";
+        } else {
+            periodTimeRangeEl.textContent = "현재 교시 시간이 아닙니다";
+            periodTimeRangeEl.style.display = "block";
         }
     }
     
