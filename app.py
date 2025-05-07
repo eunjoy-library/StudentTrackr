@@ -111,12 +111,14 @@ def check_attendance(student_id):
         for r in reader:
             if r['학번'] == student_id:
                 try:
-                    attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d %H:%M:%S')
+                    # 날짜에 시간 정보 포함 여부 확인 및 처리
+                    attendance_date = r['출석일']
+                    if ' ' in attendance_date:
+                        attendance_date = attendance_date.split(' ')[0]  # 날짜 부분만 추출
+                    # 날짜만 파싱
+                    attend_time = datetime.strptime(attendance_date, '%Y-%m-%d')
                 except ValueError:
-                    try:
-                        attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d')
-                    except ValueError:
-                        continue
+                    continue
                 if attend_time >= one_week_ago:
                     return True
         return False
@@ -136,13 +138,13 @@ def save_attendance(student_id, name, seat):
     Save attendance record to CSV files (with Korean time)
     """
     file_exists = os.path.exists(FILENAME)
-    # 한국 시간 기준으로 현재 시간 저장
-    now = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
+    # 한국 시간 기준으로 현재 날짜 저장 (시간 정보 제외)
+    now_date = datetime.now(KST).strftime('%Y-%m-%d')
     period = get_current_period()
     period_text = f'{period}교시' if period > 0 else '시간 외'
     
     row = {
-        '출석일': now, 
+        '출석일': now_date, 
         '교시': period_text,
         '학번': student_id, 
         '이름': name, 
@@ -323,10 +325,18 @@ def by_period():
         period = record.get('교시', '시간 외')
         date = record.get('출석일', '날짜 없음')
         
-        # 날짜 형식 변환 (YYYY-MM-DD -> n월n일)
+        # 날짜 형식 변환 (YYYY-MM-DD -> n월n일) - 시, 분, 초 제거
         if date != '날짜 없음':
             try:
+                # 날짜 형식에 시간이 포함되어 있으면 제거
+                if 'T' in date or ' ' in date:
+                    # 날짜가 ISO 형식 (예: 2023-05-01T12:30:00) 또는 일반 형식 (예: 2023-05-01 12:30:00)인 경우
+                    date_parts = date.split('T') if 'T' in date else date.split(' ')
+                    date = date_parts[0]  # 날짜 부분만 유지 (YYYY-MM-DD)
+                
+                # 날짜 객체로 변환
                 date_obj = datetime.strptime(date, "%Y-%m-%d")
+                # 월, 일만 표시
                 date_md = f"{date_obj.month}월{date_obj.day}일"
                 # 원래 날짜도 저장 (정렬용)
                 original_date = date_obj
