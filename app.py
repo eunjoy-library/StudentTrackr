@@ -250,18 +250,24 @@ def list_attendance():
         return redirect('/admin')
     records = load_attendance()
     
-    # 출석일 날짜 포맷 변경 (n월n일n시n분n초 형식으로)
+    # 출석일 날짜를 ISO 형식 (YYYY-MM-DD HH:MM:SS)으로 표시
     for record in records:
         date_str = record.get('출석일', '')
         if date_str:
             try:
-                # ISO 형식 (YYYY-MM-DD HH:MM:SS) 파싱
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                # n월n일n시n분n초 형식으로 변환
-                formatted_date = f"{date_obj.month}월{date_obj.day}일{date_obj.hour}시{date_obj.minute}분{date_obj.second}초"
-                record['출석일_표시'] = formatted_date
-            except ValueError:
-                # 날짜 파싱 실패 시 원본 그대로 사용
+                # 이미 ISO 형식이면 그대로 사용
+                if ' ' in date_str and len(date_str.split(' ')[1].split(':')) == 3:
+                    record['출석일_표시'] = date_str
+                else:
+                    # 날짜만 있는 경우 (YYYY-MM-DD)
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                        record['출석일_표시'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        # 파싱 실패 시 원본 그대로 사용
+                        record['출석일_표시'] = date_str
+            except Exception:
+                # 모든 처리 실패 시 원본 그대로 사용
                 record['출석일_표시'] = date_str
         else:
             record['출석일_표시'] = ''
@@ -316,18 +322,24 @@ def print_view():
         return redirect('/admin')
     records = load_attendance()
     
-    # 출석일 날짜 포맷 변경 (n월n일n시n분n초 형식으로)
+    # 출석일 날짜를 ISO 형식 (YYYY-MM-DD HH:MM:SS)으로 표시
     for record in records:
         date_str = record.get('출석일', '')
         if date_str:
             try:
-                # ISO 형식 (YYYY-MM-DD HH:MM:SS) 파싱
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                # n월n일n시n분n초 형식으로 변환
-                formatted_date = f"{date_obj.month}월{date_obj.day}일{date_obj.hour}시{date_obj.minute}분{date_obj.second}초"
-                record['출석일_표시'] = formatted_date
-            except ValueError:
-                # 날짜 파싱 실패 시 원본 그대로 사용
+                # 이미 ISO 형식이면 그대로 사용
+                if ' ' in date_str and len(date_str.split(' ')[1].split(':')) == 3:
+                    record['출석일_표시'] = date_str
+                else:
+                    # 날짜만 있는 경우 (YYYY-MM-DD)
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                        record['출석일_표시'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        # 파싱 실패 시 원본 그대로 사용
+                        record['출석일_표시'] = date_str
+            except Exception:
+                # 모든 처리 실패 시 원본 그대로 사용
                 record['출석일_표시'] = date_str
         else:
             record['출석일_표시'] = ''
