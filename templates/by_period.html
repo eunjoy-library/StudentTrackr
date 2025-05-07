@@ -239,7 +239,7 @@
                                         <div class="student-info">
                                             <span class="student-name">{{ student['이름'] }}</span>
                                             <span class="student-id">{{ student['학번'] }}</span>
-                                            <span class="student-date">({{ student['날짜_md'] }})</span>
+                                            <!-- 날짜 표시 제거됨 -->
                                         </div>
                                         <div class="student-seat">
                                             <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
@@ -400,8 +400,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 bValue = parseInt(b.dataset.seat) || 0;
                 return direction === 'asc' ? aValue - bValue : bValue - aValue;
             } else if (sortType === 'date') {
-                aValue = a.querySelector('.student-date').textContent.replace(/[()]/g, '');
-                bValue = b.querySelector('.student-date').textContent.replace(/[()]/g, '');
+                // 날짜 요소가 제거되었으므로 데이터셋 값 사용
+                aValue = a.dataset.date;
+                bValue = b.dataset.date;
                 return compareValues(aValue, bValue, direction);
             }
         });

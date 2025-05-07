@@ -352,14 +352,19 @@ def by_period():
         record_copy['날짜_md'] = date_md
         record_copy['원본_날짜'] = original_date  # 정렬용 원본 날짜 저장
         
-        # 교시만 키로 사용
-        if period not in period_groups:
-            period_groups[period] = {
+        # 날짜와 교시를 조합하여 키 생성 (예: "5월7일 6교시")
+        period_num = int(period[0]) if period and period[0].isdigit() else 999
+        
+        # 교시만 키로 사용하는 것이 아니라, 날짜+교시로 새로운 키 생성
+        new_period_key = f"{date_md} {period}"
+        
+        if new_period_key not in period_groups:
+            period_groups[new_period_key] = {
                 '학생_목록': [],
-                '교시_번호': int(period[0]) if period and period[0].isdigit() else 999
+                '교시_번호': period_num
             }
         
-        period_groups[period]['학생_목록'].append(record_copy)
+        period_groups[new_period_key]['학생_목록'].append(record_copy)
     
     # 교시 번호순으로 정렬
     sorted_periods = sorted(period_groups.keys(), key=lambda p: period_groups[p]['교시_번호'])
