@@ -32,7 +32,7 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")  # Default is "1234" i
 
 # Period schedule configuration
 PERIOD_SCHEDULE = {
-    1: (8, 0, 9, 15),
+    1: (7, 50, 9, 15),  # 1교시 시간 변경: 7:50-9:15
     2: (9, 15, 10, 40),
     3: (10, 40, 12, 5),
     4: (12, 5, 12, 30),
