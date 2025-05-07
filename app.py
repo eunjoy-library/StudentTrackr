@@ -28,11 +28,11 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")  # Default is "1234" i
 # Period schedule configuration
 PERIOD_SCHEDULE = {
     1: (8, 0, 9, 15),
-    2: (9, 15, 10, 30),
-    3: (10, 30, 11, 45),
-    4: (11, 45, 13, 0),
-    5: (13, 0, 14, 25),
-    6: (14, 35, 15, 50)
+    2: (9, 15, 10, 40),
+    3: (10, 40, 12, 5),
+    4: (12, 5, 12, 30),
+    5: (12, 30, 14, 25),
+    6: (14, 25, 15, 50)
 }
 
 # Initialize the files if they don't exist
