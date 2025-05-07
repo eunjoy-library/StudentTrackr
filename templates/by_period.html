@@ -22,6 +22,41 @@
         align-items: center;
     }
     
+    /* 정렬 컨트롤 스타일 */
+    .sorting-controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .sort-btn {
+        cursor: pointer;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.25rem;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s;
+    }
+    
+    .sort-btn:hover {
+        background-color: #e9ecef;
+    }
+    
+    .sort-btn i {
+        margin-left: 0.3rem;
+        font-size: 0.75rem;
+    }
+    
+    .sort-btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    
     .period-1 .period-header { background-color: #007bff; }
     .period-2 .period-header { background-color: #6f42c1; }
     .period-3 .period-header { background-color: #fd7e14; }
@@ -129,8 +164,23 @@
                         </div>
                         <div class="period-content">
                             {% if period_groups[period] %}
+                                <div class="sorting-controls" id="sort-controls-{{ period|replace(' ', '-')|replace('교시', '') }}">
+                                    <span class="sort-btn active" data-sort="name" data-period="{{ period }}">
+                                        이름순 <i class="fas fa-sort-alpha-down"></i>
+                                    </span>
+                                    <span class="sort-btn" data-sort="id" data-period="{{ period }}">
+                                        학번순 <i class="fas fa-sort"></i>
+                                    </span>
+                                    <span class="sort-btn" data-sort="seat" data-period="{{ period }}">
+                                        좌석번호순 <i class="fas fa-sort"></i>
+                                    </span>
+                                </div>
+                                <div class="student-list" id="student-list-{{ period|replace(' ', '-')|replace('교시', '') }}">
                                 {% for student in period_groups[period] %}
-                                    <div class="student-card">
+                                    <div class="student-card" 
+                                         data-name="{{ student['이름'] }}" 
+                                         data-id="{{ student['학번'] }}" 
+                                         data-seat="{{ student['공강좌석번호'] }}">
                                         <div class="student-info">
                                             <span class="student-name">{{ student['이름'] }}</span>
                                             <span class="student-id">{{ student['학번'] }}</span>
@@ -140,6 +190,7 @@
                                         </div>
                                     </div>
                                 {% endfor %}
+                                </div>
                             {% else %}
                                 <div class="empty-message">
                                     <i class="fas fa-exclamation-circle me-2"></i>
@@ -167,4 +218,89 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 모든 정렬 버튼에 이벤트 리스너 등록
+    document.querySelectorAll('.sort-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const sortType = this.dataset.sort;
+            const period = this.dataset.period;
+            const periodId = period.replace(' ', '-').replace('교시', '');
+            
+            // 현재 버튼의 활성화 상태와 방향 확인
+            let direction = 'asc';
+            if (this.classList.contains('active')) {
+                // 이미 활성화된 버튼인 경우, 방향 전환
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('fa-sort-alpha-down') || 
+                    icon.classList.contains('fa-sort-numeric-down')) {
+                    direction = 'desc';
+                } else {
+                    direction = 'asc';
+                }
+            }
+            
+            // 같은 교시 내의 모든 버튼 비활성화 및 아이콘 초기화
+            document.querySelectorAll(`#sort-controls-${periodId} .sort-btn`).forEach(btn => {
+                btn.classList.remove('active');
+                const btnIcon = btn.querySelector('i');
+                btnIcon.className = 'fas fa-sort';
+            });
+            
+            // 현재 버튼 활성화 및 아이콘 설정
+            this.classList.add('active');
+            const icon = this.querySelector('i');
+            if (sortType === 'name') {
+                icon.className = direction === 'asc' ? 'fas fa-sort-alpha-down' : 'fas fa-sort-alpha-up';
+            } else {
+                icon.className = direction === 'asc' ? 'fas fa-sort-numeric-down' : 'fas fa-sort-numeric-up';
+            }
+            
+            // 학생 카드 정렬
+            sortStudentCards(periodId, sortType, direction);
+        });
+    });
+    
+    // 학생 카드 정렬 함수
+    function sortStudentCards(periodId, sortType, direction) {
+        const studentList = document.getElementById(`student-list-${periodId}`);
+        const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
+        
+        studentCards.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (sortType === 'name') {
+                aValue = a.dataset.name;
+                bValue = b.dataset.name;
+                return compareValues(aValue, bValue, direction);
+            } else if (sortType === 'id') {
+                aValue = a.dataset.id;
+                bValue = b.dataset.id;
+                return compareValues(aValue, bValue, direction);
+            } else if (sortType === 'seat') {
+                aValue = parseInt(a.dataset.seat) || 0;
+                bValue = parseInt(b.dataset.seat) || 0;
+                return direction === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+        });
+        
+        // 정렬된 카드를 다시 DOM에 추가
+        studentCards.forEach(card => {
+            studentList.appendChild(card);
+        });
+    }
+    
+    // 값 비교 함수
+    function compareValues(a, b, direction) {
+        if (direction === 'asc') {
+            return a.localeCompare(b, 'ko');
+        } else {
+            return b.localeCompare(a, 'ko');
+        }
+    }
+});
+</script>
 {% endblock %}

@@ -14,4 +14,6 @@ dependencies = [
     "pandas>=2.2.3",
     "openpyxl>=3.1.5",
     "pytz>=2025.2",
+    "twilio>=9.6.0",
+    "sendgrid>=6.12.0",
 ]
