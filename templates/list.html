@@ -7,8 +7,9 @@
     /* 정렬 가능한 헤더 스타일 */
     th.sortable {
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: all 0.2s;
         user-select: none;
+        position: relative;
     }
     
     th.sortable:hover {
@@ -18,16 +19,23 @@
     th.sortable i {
         margin-left: 5px;
         font-size: 0.8rem;
+        position: relative;
+        top: 1px;
     }
     
     /* 정렬된 행 효과 */
     tbody tr {
-        transition: background-color 0.2s;
+        transition: all 0.2s;
     }
     
     /* 정렬 활성화 시 효과 */
     th.sortable.active {
         background-color: #0056b3;
+    }
+    
+    /* 정렬 효과 강조 */
+    .fa-sort-up, .fa-sort-down {
+        color: #ffc107; /* 노란색으로 강조 */
     }
 </style>
 {% endblock %}
@@ -52,11 +60,11 @@
             <table class="table table-hover table-striped" id="attendanceTable">
                 <thead class="table-dark">
                     <tr>
-                        <th class="sortable" onclick="sortTable(0)" data-sort="출석일">출석일 <i class="fas fa-sort"></i></th>
-                        <th class="sortable" onclick="sortTable(1)" data-sort="교시">교시 <i class="fas fa-sort"></i></th>
-                        <th class="sortable" onclick="sortTable(2)" data-sort="학번">학번 <i class="fas fa-sort"></i></th>
-                        <th class="sortable" onclick="sortTable(3)" data-sort="이름">이름 <i class="fas fa-sort"></i></th>
-                        <th class="sortable" onclick="sortTable(4)" data-sort="공강좌석번호">공강좌석번호 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" onclick="sortTable('attendanceTable', 0)">출석일 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" onclick="sortTable('attendanceTable', 1)">교시 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" onclick="sortTable('attendanceTable', 2)">학번 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" onclick="sortTable('attendanceTable', 3)">이름 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" onclick="sortTable('attendanceTable', 4)">공강좌석번호 <i class="fas fa-sort"></i></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,114 +103,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-// 정렬 방향을 추적하는 전역 변수
-let sortDirection = Array(5).fill('asc');
-
-// 테이블 정렬 함수 (인라인으로 호출됨)
-function sortTable(columnIndex) {
-    console.log(`${columnIndex} 열을 정렬합니다`);
-    
-    const table = document.getElementById('attendanceTable');
-    if (!table) {
-        console.error('테이블을 찾을 수 없습니다.');
-        return;
-    }
-    
-    const tbody = table.querySelector('tbody');
-    if (!tbody) {
-        console.error('테이블 본문을 찾을 수 없습니다.');
-        return;
-    }
-    
-    const rows = tbody.querySelectorAll('tr');
-    if (rows.length <= 1) {
-        console.log('정렬할 행이 충분하지 않습니다.');
-        return;
-    }
-    
-    // 출석 기록 없음 메시지가 있을 경우 정렬하지 않음
-    if (rows[0].querySelector('.alert-info')) {
-        console.log('출석 기록이 없어 정렬 기능을 비활성화합니다.');
-        return;
-    }
-    
-    // 정렬 방향 토글
-    sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
-    const direction = sortDirection[columnIndex];
-    
-    console.log(`정렬 방향: ${direction}`);
-    
-    // 아이콘 업데이트
-    updateSortIcons(columnIndex, direction);
-    
-    // 행 배열로 변환
-    const dataRows = Array.from(rows);
-    
-    // 숫자 정렬 열 여부 결정 (학번, 공강좌석번호)
-    const isNumeric = columnIndex === 2 || columnIndex === 4;
-    
-    // 정렬 함수
-    dataRows.sort((a, b) => {
-        if (!a.cells[columnIndex] || !b.cells[columnIndex]) {
-            return 0;
-        }
-        
-        let aValue = a.cells[columnIndex].textContent.trim();
-        let bValue = b.cells[columnIndex].textContent.trim();
-        
-        // 숫자 정렬
-        if (isNumeric) {
-            const aNum = parseInt(aValue.replace(/\D/g, '')) || 0;
-            const bNum = parseInt(bValue.replace(/\D/g, '')) || 0;
-            return direction === 'asc' ? aNum - bNum : bNum - aNum;
-        }
-        
-        // 문자열 정렬
-        return direction === 'asc' 
-            ? aValue.localeCompare(bValue, 'ko')
-            : bValue.localeCompare(aValue, 'ko');
-    });
-    
-    // 정렬된 행을 다시 삽입
-    dataRows.forEach(row => {
-        tbody.appendChild(row);
-    });
-    
-    console.log('정렬 완료');
-}
-
-// 정렬 아이콘 업데이트 함수
-function updateSortIcons(activeIndex, direction) {
-    const headers = document.querySelectorAll('#attendanceTable th.sortable');
-    
-    headers.forEach((header, index) => {
-        const icon = header.querySelector('i');
-        if (!icon) return;
-        
-        // 모든 헤더에서 active 클래스 제거
-        header.classList.remove('active');
-        
-        if (index === activeIndex) {
-            // 선택된 헤더에 active 클래스 추가
-            header.classList.add('active');
-            
-            // 아이콘 방향 업데이트
-            if (direction === 'asc') {
-                icon.className = 'fas fa-sort-up';
-            } else {
-                icon.className = 'fas fa-sort-down';
-            }
-        } else {
-            // 다른 헤더의 아이콘 초기화
-            icon.className = 'fas fa-sort';
-        }
-    });
-}
-
-// 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('정렬 스크립트 로드됨');
-});
-</script>
+<script src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
 {% endblock %}
