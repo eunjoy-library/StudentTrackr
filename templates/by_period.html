@@ -297,14 +297,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // 교시명 옆에 날짜 추가하기
             const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
             let copyText = `${periodHeader} 출석 명단 (${studentCards.length}명)\n\n`;
-            copyText += "이름\t학번\t좌석번호\t날짜\n";
+            copyText += "이름\t학번\t좌석번호\n";
             
             studentCards.forEach(card => {
                 const name = card.dataset.name;
                 const id = card.dataset.id;
                 const seat = card.dataset.seat;
-                const date = card.dataset.date;
-                copyText += `${name}\t${id}\t${seat}\t${date}\n`;
+                copyText += `${name}\t${id}\t${seat}\n`;
             });
             
             // 클립보드에 복사
