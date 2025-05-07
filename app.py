@@ -25,6 +25,20 @@ EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
 STUDENT_FILE = 'students.xlsx'
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")  # Default is "admin1234" if not set in environment
 
+# Period schedule configuration
+PERIOD_SCHEDULE = {
+    1: (8, 0, 9, 15),
+    2: (9, 15, 10, 30),
+    3: (10, 30, 11, 45),
+    4: (11, 45, 13, 0),
+    5: (13, 0, 14, 15),
+    6: (14, 15, 15, 30),
+    7: (15, 30, 16, 45),
+    8: (16, 45, 18, 0),
+    9: (18, 0, 19, 15),
+    10: (19, 15, 20, 30)
+}
+
 # Initialize the files if they don't exist
 def initialize_files():
     for file in [FILENAME, BACKUP_FILE, EXCEL_FRIENDLY_FILE]:
@@ -32,12 +46,25 @@ def initialize_files():
             try:
                 with open(file, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
-                    writer.writerow(['출석일', '학번', '이름', '공강좌석번호'])
+                    writer.writerow(['출석일', '교시', '학번', '이름', '공강좌석번호'])
                 logging.info(f"Created file: {file}")
             except Exception as e:
                 logging.error(f"Error creating file {file}: {e}")
 
 initialize_files()
+
+def get_current_period():
+    """
+    Determine the current class period based on current time
+    Returns period number (1-10) or 0 if outside scheduled periods
+    """
+    now = datetime.now().time()
+    for period, (start_h, start_m, end_h, end_m) in PERIOD_SCHEDULE.items():
+        start = datetime.strptime(f"{start_h}:{start_m}", "%H:%M").time()
+        end = datetime.strptime(f"{end_h}:{end_m}", "%H:%M").time()
+        if start <= now < end:
+            return period
+    return 0  # 교시가 아닌 시간일 경우
 
 def load_student_data():
     """
@@ -96,12 +123,23 @@ def save_attendance(student_id, name, seat):
     """
     file_exists = os.path.exists(FILENAME)
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    row = {'출석일': now, '학번': student_id, '이름': name, '공강좌석번호': seat}
+    period = get_current_period()
+    period_text = f'{period}교시' if period > 0 else '시간 외'
+    
+    row = {
+        '출석일': now, 
+        '교시': period_text,
+        '학번': student_id, 
+        '이름': name, 
+        '공강좌석번호': seat
+    }
 
     try:
+        # Define fields in the proper order
+        fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+        
         # Main attendance file
         with open(FILENAME, 'a', newline='', encoding='utf-8') as f:
-            fieldnames = ['출석일', '학번', '이름', '공강좌석번호']
             writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
             if not file_exists:
                 writer.writeheader()

@@ -1,0 +1,101 @@
+from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file, session
+from datetime import datetime, timedelta
+import pandas as pd
+import csv
+import os
+
+app = Flask(__name__)
+app.secret_key = 'secret_key'
+
+FILENAME = 'attendance.csv'
+BACKUP_FILE = 'attendance_backup.csv'
+LOG_FILE = 'attendance_error.log'
+EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
+STUDENT_FILE = 'students.xlsx'
+ADMIN_PASSWORD = 'admin1234'  # 관리자용 비밀번호
+
+PERIOD_SCHEDULE = {
+    1: (8, 0, 9, 15),
+    2: (9, 25, 10, 30),
+    3: (10, 50, 12, 05),
+    4: (12, 05, 13, 00),
+    5: (13, 10, 14, 25),
+    6: (14, 35, 15, 50)
+}
+
+def get_current_period():
+    now = datetime.now().time()
+    for period, (start_h, start_m, end_h, end_m) in PERIOD_SCHEDULE.items():
+        start = datetime.strptime(f"{start_h}:{start_m}", "%H:%M").time()
+        end = datetime.strptime(f"{end_h}:{end_m}", "%H:%M").time()
+        if start <= now < end:
+            return period
+    return 0  # 교시가 아닌 시간일 경우
+
+def load_student_data():
+    try:
+        df = pd.read_excel(STUDENT_FILE, dtype={'학번': str})
+        return {row['학번'].strip(): (row['이름'].strip(), row['공강좌석번호']) for _, row in df.iterrows()}
+    except Exception as e:
+        print(f"[오류] 학생 정보를 불러올 수 없습니다: {e}")
+        return {}
+
+def check_attendance(student_id):
+    if student_id.startswith('3'):
+        return False
+    if not os.path.exists(FILENAME):
+        return False
+    with open(FILENAME, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        one_week_ago = datetime.now() - timedelta(days=7)
+        for r in reader:
+            if r['학번'] == student_id:
+                try:
+                    attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    try:
+                        attend_time = datetime.strptime(r['출석일'], '%Y-%m-%d')
+                    except ValueError:
+                        continue
+                if attend_time >= one_week_ago:
+                    return True
+        return False
+
+def load_attendance():
+    if not os.path.exists(FILENAME):
+        return []
+    with open(FILENAME, newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+def save_attendance(student_id, name, seat):
+    file_exists = os.path.exists(FILENAME)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    period = get_current_period()
+    row = {'출석일': now, '학번': student_id, '이름': name, '공강좌석번호': seat, '교시': f'{period}교시' if period > 0 else '시간 외'}
+
+    try:
+        fieldnames = ['출석일', '학번', '이름', '공강좌석번호', '교시']
+
+        with open(FILENAME, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
+
+        with open(BACKUP_FILE, 'a', newline='', encoding='utf-8') as backup:
+            backup_writer = csv.DictWriter(backup, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not os.path.exists(BACKUP_FILE):
+                backup_writer.writeheader()
+            backup_writer.writerow(row)
+
+        with open(EXCEL_FRIENDLY_FILE, 'a', newline='', encoding='cp949') as excel_file:
+            excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            if not os.path.exists(EXCEL_FRIENDLY_FILE):
+                excel_writer.writeheader()
+            excel_writer.writerow(row)
+
+    except PermissionError:
+        error_msg = f"[{datetime.now()}] PermissionError: Could not write to {FILENAME}\n"
+        with open(LOG_FILE, 'a', encoding='utf-8') as log:
+            log.write(error_msg)
+        flash("⚠️ 출석 파일이 열려 있어 저장할 수 없습니다. Excel 파일을 닫고 다시 시도해주세요.")
