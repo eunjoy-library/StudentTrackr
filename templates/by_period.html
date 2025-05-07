@@ -294,9 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!studentList) return;
             
             const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
-            // 교시명 옆에 날짜 추가하기
+            // 교시명 이용 - n월n일 n교시 형식으로 변경
             const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
-            let copyText = `${periodHeader} 도서실에 있는 학생 명단입니다 (${studentCards.length}명)\n\n`;
+            let copyText = `${periodHeader} 도서실에 있는 학생 명단입니다\n\n`;
             copyText += "이름\t학번\t좌석번호\n";
             
             studentCards.forEach(card => {

@@ -336,7 +336,7 @@ def by_period():
                 
                 # 날짜 객체로 변환
                 date_obj = datetime.strptime(date, "%Y-%m-%d")
-                # 월, 일만 표시
+                # 월, 일만 표시 (n월n일 형식)
                 date_md = f"{date_obj.month}월{date_obj.day}일"
                 # 원래 날짜도 저장 (정렬용)
                 original_date = date_obj
