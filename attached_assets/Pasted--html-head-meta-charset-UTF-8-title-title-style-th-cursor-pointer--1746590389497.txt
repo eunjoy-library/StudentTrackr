@@ -1,0 +1,101 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>출석 명단</title>
+<style>
+th {
+    cursor: pointer;
+}
+</style>
+<script>
+function searchTable() {
+    var input, filter, table, tr, td, i, txtValue;
+    input = document.getElementById("searchInput");
+    filter = input.value.toUpperCase();
+    table = document.getElementById("attendanceTable");
+    tr = table.getElementsByTagName("tr");
+    for (i = 1; i < tr.length; i++) {
+        tr[i].style.display = "none";
+        td_array = tr[i].getElementsByTagName("td");
+        for (var j = 0; j < td_array.length; j++) {
+            td = td_array[j];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                    break;
+                }
+            }
+        }
+    }
+}
+
+function sortTable(n) {
+    var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+    table = document.getElementById("attendanceTable");
+    switching = true;
+    dir = "asc"; 
+    while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+            if (dir == "asc") {
+                if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                    shouldSwitch= true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                    shouldSwitch= true;
+                    break;
+                }
+            }
+        }
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount ++;      
+        } else {
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
+        }
+    }
+}
+</script>
+</head>
+
+<body>
+<h1>📋 출석 명단</h1>
+<input type="text" id="searchInput" onkeyup="searchTable()" placeholder="검색어 입력">
+<table id="attendanceTable" border="1">
+<thead>
+<tr>
+<th onclick="sortTable(0)">출석일 ⬍</th>
+<th onclick="sortTable(1)">학번 ⬍</th>
+<th onclick="sortTable(2)">이름 ⬍</th>
+<th onclick="sortTable(3)">공강좌석번호 ⬍</th>
+</tr>
+</thead>
+<tbody>
+{% for r in records %}
+<tr>
+<td>{{ r['출석일'] }}</td>
+<td>{{ r['학번'] }}</td>
+<td>{{ r['이름'] }}</td>
+<td>{{ r['공강좌석번호'] }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<br>
+<a href="/export">CSV 다운로드</a> | 
+<a href="/print">출석 출력</a> | 
+<a href="/stats">출석 통계</a> | 
+<a href="/">메인</a>
+</body>
+</html>
