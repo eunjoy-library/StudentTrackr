@@ -316,20 +316,42 @@ def by_period():
         
     records = load_attendance()
     
-    # 교시별로 학생 데이터 그룹화
+    # 날짜와 교시별로 학생 데이터 그룹화
     period_groups = {}
     
     for record in records:
+        date = record.get('출석일', '날짜 없음')
         period = record.get('교시', '시간 외')
-        if period not in period_groups:
-            period_groups[period] = []
-        period_groups[period].append(record)
+        
+        # 날짜 형식 변환 (YYYY-MM-DD -> MM월 DD일)
+        if date != '날짜 없음':
+            try:
+                date_obj = datetime.strptime(date, "%Y-%m-%d")
+                date_formatted = f"{date_obj.month}월 {date_obj.day}일"
+            except ValueError:
+                date_formatted = date
+        else:
+            date_formatted = date
+        
+        # 날짜와 교시를 결합한 키 생성
+        period_key = f"{date_formatted} {period}"
+        
+        if period_key not in period_groups:
+            period_groups[period_key] = []
+        
+        # 원본 기록에 날짜와 교시 결합 정보 추가
+        record_copy = record.copy()
+        record_copy['날짜_교시'] = period_key
+        period_groups[period_key].append(record_copy)
     
-    # 교시 순서대로 정렬 (숫자 교시 -> 그외)
+    # 날짜와 교시 순서대로 정렬
     sorted_periods = sorted(period_groups.keys(), key=lambda p: (
-        # 숫자 교시는 숫자 순서대로 정렬
-        int(p[0]) if p and p[0].isdigit() else 999,
-        # 나머지는 문자열 순서대로
+        # 날짜 없음은 맨 뒤로
+        1 if "날짜 없음" in p else 0,
+        # 날짜 기준 정렬
+        p.split()[0] if len(p.split()) > 1 else "",
+        # 교시 정렬
+        int(p.split()[-1][0]) if p.split()[-1][0].isdigit() else 999,
         p
     ))
     
