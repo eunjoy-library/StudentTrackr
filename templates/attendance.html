@@ -202,11 +202,18 @@ function updateTimeAndPeriod() {
     }
 }
 
+// 고정된 시간 표시는 script.js 파일에서 전역적으로 처리합니다
+
 // Form validation
 document.addEventListener('DOMContentLoaded', function() {
     // Update time and period initially and then every second
     updateTimeAndPeriod();
-    setInterval(updateTimeAndPeriod, 1000);
+    updateFixedTimeDisplay();
+    
+    setInterval(function() {
+        updateTimeAndPeriod();
+        updateFixedTimeDisplay();
+    }, 1000);
     
     const forms = document.querySelectorAll('.needs-validation');
     
