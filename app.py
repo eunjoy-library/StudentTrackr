@@ -321,12 +321,27 @@ def by_period():
     
     for record in records:
         period = record.get('교시', '시간 외')
+        date = record.get('출석일', '날짜 없음')
+        
+        # 날짜 형식 변환 (YYYY-MM-DD -> MM/DD)
+        if date != '날짜 없음':
+            try:
+                date_obj = datetime.strptime(date, "%Y-%m-%d")
+                date_md = f"{date_obj.month}/{date_obj.day}"
+            except ValueError:
+                date_md = date
+        else:
+            date_md = date
+        
+        # 원본 기록에 월/일 형식 날짜 추가
+        record_copy = record.copy()
+        record_copy['날짜_md'] = date_md
         
         # 교시를 키로 사용
         if period not in period_groups:
             period_groups[period] = []
         
-        period_groups[period].append(record.copy())
+        period_groups[period].append(record_copy)
     
     # 교시 순서대로 정렬
     sorted_periods = sorted(period_groups.keys(), key=lambda p: (
