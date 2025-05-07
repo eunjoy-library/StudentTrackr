@@ -2,6 +2,36 @@
 
 {% block title %}출석 명단 - 도서실 출석 시스템{% endblock %}
 
+{% block head %}
+<style>
+    /* 정렬 가능한 헤더 스타일 */
+    th.sortable {
+        cursor: pointer;
+        transition: background-color 0.2s;
+        user-select: none;
+    }
+    
+    th.sortable:hover {
+        background-color: rgba(0, 123, 255, 0.7);
+    }
+    
+    th.sortable i {
+        margin-left: 5px;
+        font-size: 0.8rem;
+    }
+    
+    /* 정렬된 행 효과 */
+    tbody tr {
+        transition: background-color 0.2s;
+    }
+    
+    /* 정렬 활성화 시 효과 */
+    th.sortable.active {
+        background-color: #0056b3;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card shadow">
     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -22,11 +52,11 @@
             <table class="table table-hover table-striped">
                 <thead class="table-dark">
                     <tr>
-                        <th>출석일</th>
-                        <th>교시</th>
-                        <th>학번</th>
-                        <th>이름</th>
-                        <th>공강좌석번호</th>
+                        <th class="sortable" data-sort="출석일">출석일 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-sort="교시">교시 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-sort="학번">학번 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-sort="이름">이름 <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-sort="공강좌석번호">공강좌석번호 <i class="fas fa-sort"></i></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,4 +92,99 @@
         </a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 테이블 정렬 기능
+    const table = document.querySelector('.table');
+    const headers = table.querySelectorAll('th.sortable');
+    const tableBody = table.querySelector('tbody');
+    const rows = tableBody.querySelectorAll('tr');
+    
+    // 정렬 상태를 추적하는 변수
+    let currentSort = {
+        column: '',
+        direction: ''
+    };
+    
+    // 정렬 아이콘 업데이트 함수
+    function updateSortIcons(header) {
+        headers.forEach(h => {
+            // 모든 헤더에서 active 클래스 제거
+            h.classList.remove('active');
+            
+            const icon = h.querySelector('i');
+            if (h === header) {
+                // 선택된 헤더에 active 클래스 추가
+                h.classList.add('active');
+                
+                if (currentSort.direction === 'asc') {
+                    icon.className = 'fas fa-sort-up';
+                } else if (currentSort.direction === 'desc') {
+                    icon.className = 'fas fa-sort-down';
+                } else {
+                    icon.className = 'fas fa-sort';
+                }
+            } else {
+                icon.className = 'fas fa-sort';
+            }
+        });
+    }
+    
+    // 테이블 정렬 함수
+    function sortTable(index, sortColumn) {
+        const rowsArray = Array.from(rows);
+        const direction = currentSort.column === sortColumn 
+            ? (currentSort.direction === 'asc' ? 'desc' : 'asc') 
+            : 'asc';
+            
+        // 정렬 상태 업데이트
+        currentSort.column = sortColumn;
+        currentSort.direction = direction;
+        
+        // 숫자 정렬 또는 문자열 정렬 결정
+        const isNumeric = sortColumn === '공강좌석번호' || sortColumn === '학번';
+        
+        rowsArray.sort((a, b) => {
+            let aValue = a.cells[index].textContent.trim();
+            let bValue = b.cells[index].textContent.trim();
+            
+            // 숫자로 변환하여 비교
+            if (isNumeric) {
+                // 숫자만 추출
+                const aNum = parseInt(aValue.replace(/\D/g, '')) || 0;
+                const bNum = parseInt(bValue.replace(/\D/g, '')) || 0;
+                return direction === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+            
+            // 문자열 비교
+            if (direction === 'asc') {
+                return aValue.localeCompare(bValue, 'ko');
+            } else {
+                return bValue.localeCompare(aValue, 'ko');
+            }
+        });
+        
+        // 정렬된 행을 다시 삽입
+        rowsArray.forEach(row => {
+            tableBody.appendChild(row);
+        });
+    }
+    
+    // 정렬 헤더에 클릭 이벤트 추가
+    headers.forEach(header => {
+        header.style.cursor = 'pointer';  // 마우스 포인터 변경
+        
+        header.addEventListener('click', () => {
+            const sortColumn = header.getAttribute('data-sort');
+            const columnIndex = Array.from(headers).indexOf(header);
+            
+            sortTable(columnIndex, sortColumn);
+            updateSortIcons(header);
+        });
+    });
+});
+</script>
 {% endblock %}
