@@ -36,7 +36,7 @@
                         </div>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" id="submitBtn" class="btn btn-primary">
                             <i class="fas fa-check-circle me-2"></i>출석하기
                         </button>
                     </div>
@@ -55,8 +55,43 @@
 
 {% block scripts %}
 <script>
-// Example JavaScript for form validation
+// Dynamic button label with period
+function updateButtonLabel() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    let period = '시간 외';
+    const schedule = [
+        [8, 0, 9, 15], [9, 15, 10, 30], [10, 30, 11, 45], [11, 45, 13, 0],
+        [13, 0, 14, 15], [14, 15, 15, 30], [15, 30, 16, 45], [16, 45, 18, 0],
+        [18, 0, 19, 15], [19, 15, 20, 30]
+    ];
+    for (let i = 0; i < schedule.length; i++) {
+        const [sh, sm, eh, em] = schedule[i];
+        const start = new Date(); start.setHours(sh, sm);
+        const end = new Date(); end.setHours(eh, em);
+        const current = new Date(); current.setHours(hour, minute);
+        if (current >= start && current < end) {
+            period = (i + 1) + '교시';
+            break;
+        }
+    }
+    
+    const submitBtn = document.getElementById("submitBtn");
+    if (submitBtn) {
+        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${month}월 ${day}일 ${period} 출석하기`;
+    }
+}
+
+// Form validation
 document.addEventListener('DOMContentLoaded', function() {
+    // Update button label initially and then every second
+    updateButtonLabel();
+    setInterval(updateButtonLabel, 1000);
+    
     const forms = document.querySelectorAll('.needs-validation');
     
     Array.prototype.slice.call(forms).forEach(function(form) {
