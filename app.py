@@ -294,19 +294,22 @@ def export_csv():
             writer = csv.writer(f, quoting=csv.QUOTE_ALL)
             writer.writerows(data)
             
-        # 파일 전송 후 파일 삭제를 위한 콜백 함수
-        def remove_temp_file():
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-                
-        return send_file(
+        # 파일 전송
+        response = send_file(
             temp_file, 
             as_attachment=True, 
             download_name="attendance.csv",
-            mimetype='text/csv',
-            # 파일 전송 후 임시 파일 삭제
-            after_this_request=remove_temp_file
+            mimetype='text/csv'
         )
+        
+        # 파일 전송 후 임시 파일 삭제 (함수를 응답 콜백에 등록)
+        @after_this_request
+        def remove_temp_file(response):
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            return response
+        
+        return response
     except Exception as e:
         if os.path.exists(temp_file):
             os.remove(temp_file)
