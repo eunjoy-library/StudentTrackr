@@ -11,6 +11,11 @@
                     <i class="fas fa-book me-2"></i>도서실 출석체크
                 </h1>
             </div>
+            <div class="alert alert-info m-3">
+                <h4 id="currentTimeInfo" class="text-center mb-0">
+                    <i class="fas fa-clock me-2"></i><span id="currentMonthDay"></span> <span id="currentPeriod" class="badge bg-primary"></span>
+                </h4>
+            </div>
             <div class="card-body">
                 <form method="post" class="needs-validation" novalidate>
                     <div class="mb-3">
@@ -55,42 +60,72 @@
 
 {% block scripts %}
 <script>
-// Dynamic button label with period
-function updateButtonLabel() {
+// Dynamic time and period update
+function updateTimeAndPeriod() {
     const now = new Date();
     const month = now.getMonth() + 1;
     const day = now.getDate();
     const hour = now.getHours();
     const minute = now.getMinutes();
+    const second = now.getSeconds();
+    
+    // Format the time with leading zeros
+    const formattedHour = hour.toString().padStart(2, '0');
+    const formattedMinute = minute.toString().padStart(2, '0');
+    const formattedSecond = second.toString().padStart(2, '0');
 
     let period = '시간 외';
+    let periodNumber = 0;
+    
     const schedule = [
         [8, 0, 9, 15], [9, 15, 10, 30], [10, 30, 11, 45], [11, 45, 13, 0],
         [13, 0, 14, 15], [14, 15, 15, 30], [15, 30, 16, 45], [16, 45, 18, 0],
         [18, 0, 19, 15], [19, 15, 20, 30]
     ];
+    
     for (let i = 0; i < schedule.length; i++) {
         const [sh, sm, eh, em] = schedule[i];
-        const start = new Date(); start.setHours(sh, sm);
-        const end = new Date(); end.setHours(eh, em);
-        const current = new Date(); current.setHours(hour, minute);
+        const start = new Date(); start.setHours(sh, sm, 0);
+        const end = new Date(); end.setHours(eh, em, 0);
+        const current = new Date(); current.setHours(hour, minute, second);
+        
         if (current >= start && current < end) {
-            period = (i + 1) + '교시';
+            periodNumber = i + 1;
+            period = periodNumber + '교시';
             break;
         }
     }
     
+    // Update the month and day display
+    const currentMonthDayEl = document.getElementById("currentMonthDay");
+    if (currentMonthDayEl) {
+        currentMonthDayEl.textContent = `${month}월 ${day}일 ${formattedHour}:${formattedMinute}:${formattedSecond}`;
+    }
+    
+    // Update the period display
+    const currentPeriodEl = document.getElementById("currentPeriod");
+    if (currentPeriodEl) {
+        currentPeriodEl.textContent = period;
+        // Change badge color based on period
+        if (periodNumber > 0) {
+            currentPeriodEl.className = "badge bg-success";
+        } else {
+            currentPeriodEl.className = "badge bg-secondary";
+        }
+    }
+    
+    // Update the submit button
     const submitBtn = document.getElementById("submitBtn");
     if (submitBtn) {
-        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${month}월 ${day}일 ${period} 출석하기`;
+        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
     }
 }
 
 // Form validation
 document.addEventListener('DOMContentLoaded', function() {
-    // Update button label initially and then every second
-    updateButtonLabel();
-    setInterval(updateButtonLabel, 1000);
+    // Update time and period initially and then every second
+    updateTimeAndPeriod();
+    setInterval(updateTimeAndPeriod, 1000);
     
     const forms = document.querySelectorAll('.needs-validation');
     
