@@ -196,7 +196,7 @@ def attendance():
         if student_info is None:
             flash("❌ 학번이 올바르지 않습니다. 다시 확인해주세요.", "danger")
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
-            flash(f"❌ 입력한 이름이 학번과 일치하지 않습니다. 입력한 이름: {name}, 저장된 이름: {student_info[0]}", "danger")
+            flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
         elif check_attendance(student_id):
             flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
         else:
