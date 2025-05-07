@@ -26,12 +26,20 @@ document.addEventListener('DOMContentLoaded', function() {
     updateFixedTimeDisplay();
     setInterval(updateFixedTimeDisplay, 1000);
     
-    // Auto-hide alert messages after 5 seconds
+    // Auto-hide alert messages after 5 seconds (data-nohide 속성이 없는 요소만)
     setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert:not(.alert-dismissible)');
+        const alerts = document.querySelectorAll('.alert:not([data-nohide="true"])');
         alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+            // fixed-time-display 요소는 항상 제외
+            if (alert.id !== 'fixedTimeDisplay' && !alert.classList.contains('fixed-time-display')) {
+                try {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                } catch (e) {
+                    // alert가 아닌 요소일 경우 오류 방지
+                    console.log("Cannot close non-alert element");
+                }
+            }
         });
     }, 5000);
     
