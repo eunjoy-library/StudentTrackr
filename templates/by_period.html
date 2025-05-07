@@ -121,6 +121,38 @@
         font-size: 0.9rem;
     }
     
+    .copy-btn {
+        cursor: pointer;
+        background-color: rgba(255, 255, 255, 0.3);
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.8rem;
+        color: white;
+        transition: all 0.2s;
+    }
+    
+    .copy-btn:hover {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .copy-btn.copied {
+        background-color: rgba(40, 167, 69, 0.7);
+    }
+    
+    /* 복사 알림 스타일 */
+    .copy-toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: rgba(40, 167, 69, 0.9);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
     .empty-message {
         padding: 2rem;
         text-align: center;
@@ -138,6 +170,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- 복사 완료 알림을 위한 토스트 -->
+<div class="copy-toast" id="copyToast">복사되었습니다!</div>
+
 <div class="container">
     <div class="card shadow mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -164,7 +199,12 @@
                     <div class="period-section period-{{ period[0] if period[0].isdigit() else 'other' }}">
                         <div class="period-header">
                             <h3 class="h5 mb-0">{{ period }}</h3>
-                            <span class="period-count">{{ period_groups[period]|length }}명</span>
+                            <div class="d-flex align-items-center">
+                                <span class="period-count me-2">{{ period_groups[period]|length }}명</span>
+                                <span class="copy-btn" data-period="{{ period }}" title="이 교시 학생 목록 복사">
+                                    <i class="fas fa-copy"></i>
+                                </span>
+                            </div>
                         </div>
                         <div class="period-content">
                             {% if period_groups[period] %}
@@ -227,6 +267,56 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 복사 버튼에 이벤트 리스너 등록
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const period = this.dataset.period;
+            const periodId = period.replace(' ', '-').replace('교시', '');
+            const studentList = document.getElementById(`student-list-${periodId}`);
+            
+            if (!studentList) return;
+            
+            const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
+            let copyText = `${period} 출석 명단 (${studentCards.length}명)\n\n`;
+            copyText += "이름\t학번\t좌석번호\n";
+            
+            studentCards.forEach(card => {
+                const name = card.dataset.name;
+                const id = card.dataset.id;
+                const seat = card.dataset.seat;
+                copyText += `${name}\t${id}\t${seat}\n`;
+            });
+            
+            // 클립보드에 복사
+            navigator.clipboard.writeText(copyText)
+                .then(() => {
+                    // 복사 성공 시 시각적 피드백
+                    const toast = document.getElementById('copyToast');
+                    toast.textContent = `${period} 학생 명단이 클립보드에 복사되었습니다!`;
+                    toast.style.opacity = '1';
+                    
+                    // 복사 버튼에도 시각적 피드백
+                    this.classList.add('copied');
+                    this.querySelector('i').className = 'fas fa-check';
+                    
+                    // 2초 후 토스트 메시지 숨기기
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                    }, 2000);
+                    
+                    // 3초 후 복사 버튼 아이콘 원상복구
+                    setTimeout(() => {
+                        this.classList.remove('copied');
+                        this.querySelector('i').className = 'fas fa-copy';
+                    }, 3000);
+                })
+                .catch(err => {
+                    console.error('클립보드 복사 실패:', err);
+                    alert('클립보드에 복사하는데 실패했습니다. 직접 선택하여 복사해주세요.');
+                });
+        });
+    });
+    
     // 모든 정렬 버튼에 이벤트 리스너 등록
     document.querySelectorAll('.sort-btn').forEach(button => {
         button.addEventListener('click', function() {
