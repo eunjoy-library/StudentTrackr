@@ -316,8 +316,8 @@ def by_period():
         
     records = load_attendance()
     
-    # 날짜 및 교시별로 학생 데이터 그룹화
-    date_period_groups = {}
+    # 교시별로만 학생 데이터 그룹화 (날짜는 개별 학생 카드에만 표시)
+    period_groups = {}
     
     for record in records:
         period = record.get('교시', '시간 외')
@@ -337,37 +337,31 @@ def by_period():
             date_md = date
             original_date = datetime(1900, 1, 1)  # 날짜 없음은 고정 날짜로
         
-        # 날짜와 교시를 조합한 키 생성 (예: "5월7일 1교시")
-        date_period_key = f"{date_md} {period}"
-        
         # 원본 기록에 날짜 정보 추가
         record_copy = record.copy()
         record_copy['날짜_md'] = date_md
         record_copy['원본_날짜'] = original_date  # 정렬용 원본 날짜 저장
         
-        # 날짜+교시를 키로 사용
-        if date_period_key not in date_period_groups:
-            date_period_groups[date_period_key] = {
+        # 교시만 키로 사용
+        if period not in period_groups:
+            period_groups[period] = {
                 '학생_목록': [],
-                '원본_날짜': original_date,  # 정렬용 원본 날짜
                 '교시_번호': int(period[0]) if period and period[0].isdigit() else 999
             }
         
-        date_period_groups[date_period_key]['학생_목록'].append(record_copy)
+        period_groups[period]['학생_목록'].append(record_copy)
     
-    # 날짜(최신순)와 교시 순서대로 정렬
-    sorted_date_periods = sorted(date_period_groups.keys(), key=lambda k: (
-        # 날짜 최신순 (내림차순)
-        -1 * date_period_groups[k]['원본_날짜'].timestamp() if isinstance(date_period_groups[k]['원본_날짜'], datetime) else 0,
-        # 교시 오름차순
-        date_period_groups[k]['교시_번호']
-    ))
+    # 교시 번호순으로 정렬
+    sorted_periods = sorted(period_groups.keys(), key=lambda p: period_groups[p]['교시_번호'])
     
-    # 각 날짜+교시 내에서 이름으로 정렬
-    for key in date_period_groups:
-        date_period_groups[key]['학생_목록'] = sorted(date_period_groups[key]['학생_목록'], key=lambda r: r['이름'])
+    # 각 교시 내에서 학생을 날짜 최신순, 이름으로 정렬
+    for period in period_groups:
+        period_groups[period]['학생_목록'] = sorted(
+            period_groups[period]['학생_목록'], 
+            key=lambda r: (-1 * r['원본_날짜'].timestamp(), r['이름'])
+        )
     
-    return render_template('by_period.html', period_groups=date_period_groups, sorted_periods=sorted_date_periods)
+    return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
 
 @app.route('/logout')
 def logout():
