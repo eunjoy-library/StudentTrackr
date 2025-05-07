@@ -300,9 +300,11 @@ document.addEventListener('DOMContentLoaded', function() {
             copyText += "이름\t학번\t좌석번호\n";
             
             studentCards.forEach(card => {
+                // 날짜 정보 없이 복사
                 const name = card.dataset.name;
                 const id = card.dataset.id;
                 const seat = card.dataset.seat;
+                // 날짜 정보를 제외하고 복사
                 copyText += `${name}\t${id}\t${seat}\n`;
             });
             
