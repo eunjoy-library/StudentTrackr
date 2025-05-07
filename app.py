@@ -138,13 +138,15 @@ def save_attendance(student_id, name, seat):
     Save attendance record to CSV files (with Korean time)
     """
     file_exists = os.path.exists(FILENAME)
-    # 한국 시간 기준으로 현재 날짜 저장 (시간 정보 제외)
-    now_date = datetime.now(KST).strftime('%Y-%m-%d')
+    # 한국 시간 기준으로 현재 날짜와 시간 저장
+    now = datetime.now(KST)
+    # 출석일 형식: n월n일n시n분n초 (예: 5월7일14시30분22초)
+    now_date_time = now.strftime('%Y-%m-%d %H:%M:%S')  # 저장용 ISO 형식 (DB 호환성)
     period = get_current_period()
     period_text = f'{period}교시' if period > 0 else '시간 외'
     
     row = {
-        '출석일': now_date, 
+        '출석일': now_date_time, 
         '교시': period_text,
         '학번': student_id, 
         '이름': name, 
@@ -247,6 +249,23 @@ def list_attendance():
         flash("관리자 로그인이 필요합니다.", "danger")
         return redirect('/admin')
     records = load_attendance()
+    
+    # 출석일 날짜 포맷 변경 (n월n일n시n분n초 형식으로)
+    for record in records:
+        date_str = record.get('출석일', '')
+        if date_str:
+            try:
+                # ISO 형식 (YYYY-MM-DD HH:MM:SS) 파싱
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                # n월n일n시n분n초 형식으로 변환
+                formatted_date = f"{date_obj.month}월{date_obj.day}일{date_obj.hour}시{date_obj.minute}분{date_obj.second}초"
+                record['출석일_표시'] = formatted_date
+            except ValueError:
+                # 날짜 파싱 실패 시 원본 그대로 사용
+                record['출석일_표시'] = date_str
+        else:
+            record['출석일_표시'] = ''
+    
     return render_template('list.html', records=records)
 
 @app.route('/export')
@@ -296,6 +315,23 @@ def print_view():
         flash("관리자 로그인이 필요합니다.", "danger")
         return redirect('/admin')
     records = load_attendance()
+    
+    # 출석일 날짜 포맷 변경 (n월n일n시n분n초 형식으로)
+    for record in records:
+        date_str = record.get('출석일', '')
+        if date_str:
+            try:
+                # ISO 형식 (YYYY-MM-DD HH:MM:SS) 파싱
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                # n월n일n시n분n초 형식으로 변환
+                formatted_date = f"{date_obj.month}월{date_obj.day}일{date_obj.hour}시{date_obj.minute}분{date_obj.second}초"
+                record['출석일_표시'] = formatted_date
+            except ValueError:
+                # 날짜 파싱 실패 시 원본 그대로 사용
+                record['출석일_표시'] = date_str
+        else:
+            record['출석일_표시'] = ''
+    
     return render_template('print.html', records=records)
 
 @app.route('/stats')
