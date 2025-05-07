@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 숨겨진 관리자 링크 설정
     const hiddenAdminLink = document.getElementById('hiddenAdminLink');
     if (hiddenAdminLink) {
-        // 클릭 이벤트 등록 (5번 빠르게 클릭하면 관리자 페이지로 이동)
+        // 클릭 이벤트 등록 (2번 빠르게 클릭하면 관리자 페이지로 이동)
         hiddenAdminLink.addEventListener('click', function(e) {
             e.preventDefault();
             secretClickCount++;
             
-            if (secretClickCount >= 5) {
+            if (secretClickCount >= 2) {
                 window.location.href = '/admin';
                 secretClickCount = 0;
             } else {
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fixedTimeDisplay.addEventListener('click', function() {
                 secretClickCount++;
                 
-                if (secretClickCount >= 7) {
+                if (secretClickCount >= 2) {
                     window.location.href = '/admin';
                     secretClickCount = 0;
                 } else {
