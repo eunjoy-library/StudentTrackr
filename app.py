@@ -316,46 +316,58 @@ def by_period():
         
     records = load_attendance()
     
-    # 교시별로만 학생 데이터 그룹화
-    period_groups = {}
+    # 날짜 및 교시별로 학생 데이터 그룹화
+    date_period_groups = {}
     
     for record in records:
         period = record.get('교시', '시간 외')
         date = record.get('출석일', '날짜 없음')
         
-        # 날짜 형식 변환 (YYYY-MM-DD -> MM/DD)
+        # 날짜 형식 변환 (YYYY-MM-DD -> n월n일)
         if date != '날짜 없음':
             try:
                 date_obj = datetime.strptime(date, "%Y-%m-%d")
-                date_md = f"{date_obj.month}/{date_obj.day}"
+                date_md = f"{date_obj.month}월{date_obj.day}일"
+                # 원래 날짜도 저장 (정렬용)
+                original_date = date_obj
             except ValueError:
                 date_md = date
+                original_date = datetime(1900, 1, 1)  # 날짜 변환 실패시 고정 날짜로
         else:
             date_md = date
+            original_date = datetime(1900, 1, 1)  # 날짜 없음은 고정 날짜로
         
-        # 원본 기록에 월/일 형식 날짜 추가
+        # 날짜와 교시를 조합한 키 생성 (예: "5월7일 1교시")
+        date_period_key = f"{date_md} {period}"
+        
+        # 원본 기록에 날짜 정보 추가
         record_copy = record.copy()
         record_copy['날짜_md'] = date_md
+        record_copy['원본_날짜'] = original_date  # 정렬용 원본 날짜 저장
         
-        # 교시를 키로 사용
-        if period not in period_groups:
-            period_groups[period] = []
+        # 날짜+교시를 키로 사용
+        if date_period_key not in date_period_groups:
+            date_period_groups[date_period_key] = {
+                '학생_목록': [],
+                '원본_날짜': original_date,  # 정렬용 원본 날짜
+                '교시_번호': int(period[0]) if period and period[0].isdigit() else 999
+            }
         
-        period_groups[period].append(record_copy)
+        date_period_groups[date_period_key]['학생_목록'].append(record_copy)
     
-    # 교시 순서대로 정렬
-    sorted_periods = sorted(period_groups.keys(), key=lambda p: (
-        # 숫자 교시는 숫자 순서대로 정렬
-        int(p[0]) if p and p[0].isdigit() else 999,
-        # 나머지는 문자열 순서대로
-        p
+    # 날짜(최신순)와 교시 순서대로 정렬
+    sorted_date_periods = sorted(date_period_groups.keys(), key=lambda k: (
+        # 날짜 최신순 (내림차순)
+        -1 * date_period_groups[k]['원본_날짜'].timestamp() if isinstance(date_period_groups[k]['원본_날짜'], datetime) else 0,
+        # 교시 오름차순
+        date_period_groups[k]['교시_번호']
     ))
     
-    # 각 교시 내에서 이름으로 정렬
-    for period in period_groups:
-        period_groups[period] = sorted(period_groups[period], key=lambda r: r['이름'])
+    # 각 날짜+교시 내에서 이름으로 정렬
+    for key in date_period_groups:
+        date_period_groups[key]['학생_목록'] = sorted(date_period_groups[key]['학생_목록'], key=lambda r: r['이름'])
     
-    return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
+    return render_template('by_period.html', period_groups=date_period_groups, sorted_periods=sorted_date_periods)
 
 @app.route('/logout')
 def logout():
