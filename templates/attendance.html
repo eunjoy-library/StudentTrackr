@@ -11,16 +11,26 @@
                     <i class="fas fa-book me-2"></i>도서실 출석체크
                 </h1>
             </div>
-            <div class="alert alert-info m-3">
-                <h4 id="currentTimeInfo" class="text-center mb-0">
-                    <i class="fas fa-calendar-day me-2"></i><span id="currentMonthDay"></span>
-                </h4>
-                <div class="text-center mt-2">
-                    <div>
-                        <span class="badge bg-dark me-2" style="font-size: 1rem;">현재 교시:</span>
-                        <span id="currentPeriod" class="badge bg-primary" style="font-size: 1.1rem; padding: 0.5rem 0.7rem;"></span>
+            <div class="alert alert-info m-3 p-3">
+                <div class="row align-items-center">
+                    <div class="col-12 text-center mb-2">
+                        <h4 class="mb-0 border-bottom pb-2">
+                            <i class="fas fa-calendar-day me-2"></i><span id="currentMonthDay"></span>
+                        </h4>
                     </div>
-                    <div class="small mt-2 fw-bold" id="periodTimeRange"></div>
+                    <div class="col-12 text-center">
+                        <div class="d-flex justify-content-center align-items-center">
+                            <div class="text-center p-2 rounded border border-secondary" style="background-color: rgba(255,255,255,0.7); min-width: 200px;">
+                                <div class="mb-1">
+                                    <span class="badge bg-dark" style="font-size: 0.9rem;">현재 교시</span>
+                                </div>
+                                <div>
+                                    <span id="currentPeriod" class="badge bg-primary" style="font-size: 1.2rem; padding: 0.5rem 0.7rem;"></span>
+                                </div>
+                                <div class="small mt-2 fw-bold" id="periodTimeRange"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -107,10 +117,19 @@ function updateTimeAndPeriod() {
         }
     }
     
+    // Get day of week in Korean
+    const dayOfWeekNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayOfWeek = dayOfWeekNames[now.getDay()];
+    
     // Update the month and day display
     const currentMonthDayEl = document.getElementById("currentMonthDay");
     if (currentMonthDayEl) {
-        currentMonthDayEl.textContent = `${month}월 ${day}일 ${formattedHour}:${formattedMinute}:${formattedSecond}`;
+        currentMonthDayEl.innerHTML = `
+            <span class="badge bg-primary me-1">${month}월</span>
+            <span class="badge bg-primary me-1">${day}일</span>
+            <span class="badge bg-secondary me-2">(${dayOfWeek})</span>
+            <span class="fw-bold">${formattedHour}:${formattedMinute}:${formattedSecond}</span>
+        `;
     }
     
     // Update the period display
@@ -131,9 +150,35 @@ function updateTimeAndPeriod() {
         if (periodNumber > 0) {
             periodTimeRangeEl.textContent = `${currentPeriodStartTime} - ${currentPeriodEndTime}`;
             periodTimeRangeEl.style.display = "block";
+            periodTimeRangeEl.classList.add('text-success');
+            periodTimeRangeEl.classList.remove('text-secondary');
         } else {
-            periodTimeRangeEl.textContent = "현재 교시 시간이 아닙니다";
+            // Display the next period's start time if we're not in a period
+            let nextPeriodIndex = -1;
+            let nextPeriodStartTime = '';
+            
+            // Find the next period
+            for (let i = 0; i < schedule.length; i++) {
+                const [sh, sm, eh, em] = schedule[i];
+                const start = new Date(); start.setHours(sh, sm, 0);
+                const current = new Date(); current.setHours(hour, minute, second);
+                
+                if (current < start) {
+                    nextPeriodIndex = i;
+                    nextPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+                    break;
+                }
+            }
+            
+            if (nextPeriodIndex !== -1) {
+                periodTimeRangeEl.textContent = `다음 ${nextPeriodIndex + 1}교시: ${nextPeriodStartTime}부터`;
+            } else {
+                periodTimeRangeEl.textContent = "모든 교시가 종료되었습니다";
+            }
+            
             periodTimeRangeEl.style.display = "block";
+            periodTimeRangeEl.classList.add('text-secondary');
+            periodTimeRangeEl.classList.remove('text-success');
         }
     }
     
