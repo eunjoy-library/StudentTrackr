@@ -306,6 +306,38 @@ def stats():
     counts = Counter(r['이름'] for r in records)
     sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
     return render_template('stats.html', attendance_counts=sorted_counts)
+    
+@app.route('/by_period')
+def by_period():
+    """교시별 출석 현황 보기 (admin only)"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    records = load_attendance()
+    
+    # 교시별로 학생 데이터 그룹화
+    period_groups = {}
+    
+    for record in records:
+        period = record.get('교시', '시간 외')
+        if period not in period_groups:
+            period_groups[period] = []
+        period_groups[period].append(record)
+    
+    # 교시 순서대로 정렬 (숫자 교시 -> 그외)
+    sorted_periods = sorted(period_groups.keys(), key=lambda p: (
+        # 숫자 교시는 숫자 순서대로 정렬
+        int(p[0]) if p and p[0].isdigit() else 999,
+        # 나머지는 문자열 순서대로
+        p
+    ))
+    
+    # 각 교시 내에서 이름으로 정렬
+    for period in period_groups:
+        period_groups[period] = sorted(period_groups[period], key=lambda r: r['이름'])
+    
+    return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
 
 @app.route('/logout')
 def logout():

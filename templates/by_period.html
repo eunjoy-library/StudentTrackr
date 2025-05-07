@@ -1,0 +1,170 @@
+{% extends "layout.html" %}
+
+{% block title %}교시별 출석 현황 - 도서실 출석 시스템{% endblock %}
+
+{% block head %}
+<style>
+    .period-section {
+        margin-bottom: 2rem;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .period-header {
+        padding: 0.75rem 1.25rem;
+        font-weight: bold;
+        color: white;
+        background-color: #343a40;
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .period-1 .period-header { background-color: #007bff; }
+    .period-2 .period-header { background-color: #6f42c1; }
+    .period-3 .period-header { background-color: #fd7e14; }
+    .period-4 .period-header { background-color: #e83e8c; }
+    .period-5 .period-header { background-color: #20c997; }
+    .period-6 .period-header { background-color: #dc3545; }
+    
+    .period-content {
+        padding: 1.25rem;
+        background-color: #f8f9fa;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        border-top: none;
+    }
+    
+    .student-card {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background-color: white;
+        border-radius: 0.25rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    
+    .student-card:hover {
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    .student-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .student-name {
+        font-weight: bold;
+        margin-right: 1rem;
+    }
+    
+    .student-id {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .student-seat {
+        background-color: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: bold;
+    }
+    
+    .period-count {
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .empty-message {
+        padding: 2rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .no-records {
+        text-align: center;
+        padding: 3rem 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">
+                <i class="fas fa-clock me-2"></i>교시별 출석 현황
+            </h2>
+            <div>
+                <a href="/list" class="btn btn-sm btn-light me-2">
+                    <i class="fas fa-list me-1"></i>전체 목록
+                </a>
+                <a href="/stats" class="btn btn-sm btn-light">
+                    <i class="fas fa-chart-bar me-1"></i>통계 보기
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if sorted_periods %}
+                <p class="text-muted mb-4">
+                    <i class="fas fa-info-circle me-1"></i>
+                    각 교시별로 출석한 학생들을 확인할 수 있습니다. 총 {{ sorted_periods|length }}개 교시에 출석 기록이 있습니다.
+                </p>
+                
+                {% for period in sorted_periods %}
+                    <div class="period-section period-{{ period[0] if period[0].isdigit() else 'other' }}">
+                        <div class="period-header">
+                            <h3 class="h5 mb-0">{{ period }}</h3>
+                            <span class="period-count">{{ period_groups[period]|length }}명</span>
+                        </div>
+                        <div class="period-content">
+                            {% if period_groups[period] %}
+                                {% for student in period_groups[period] %}
+                                    <div class="student-card">
+                                        <div class="student-info">
+                                            <span class="student-name">{{ student['이름'] }}</span>
+                                            <span class="student-id">{{ student['학번'] }}</span>
+                                        </div>
+                                        <div class="student-seat">
+                                            <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-message">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    이 교시에는 출석 기록이 없습니다.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-records">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-muted"></i>
+                    <h3>출석 기록이 없습니다</h3>
+                    <p class="mb-0">학생들이 출석하면 교시별 현황이 이곳에 표시됩니다.</p>
+                </div>
+            {% endif %}
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a href="/list" class="btn btn-outline-primary">
+                <i class="fas fa-list me-1"></i>전체 목록으로
+            </a>
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="fas fa-home me-1"></i>메인 페이지로
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
