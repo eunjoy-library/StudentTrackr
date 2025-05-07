@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify, after_this_request
 from datetime import datetime, timedelta
 import pandas as pd
 import csv
@@ -42,7 +42,8 @@ PERIOD_SCHEDULE = {
 
 # Initialize the files if they don't exist
 def initialize_files():
-    for file in [FILENAME, BACKUP_FILE, EXCEL_FRIENDLY_FILE]:
+    # 기본 파일과 백업 파일은 UTF-8로 저장
+    for file in [FILENAME, BACKUP_FILE]:
         if not os.path.exists(file):
             try:
                 with open(file, 'w', newline='', encoding='utf-8') as f:
@@ -51,6 +52,16 @@ def initialize_files():
                 logging.info(f"Created file: {file}")
             except Exception as e:
                 logging.error(f"Error creating file {file}: {e}")
+    
+    # Excel용 파일은 UTF-8-SIG(BOM 포함)로 저장
+    if not os.path.exists(EXCEL_FRIENDLY_FILE):
+        try:
+            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.writer(f)
+                writer.writerow(['출석일', '교시', '학번', '이름', '공강좌석번호'])
+            logging.info(f"Created Excel-friendly file: {EXCEL_FRIENDLY_FILE}")
+        except Exception as e:
+            logging.error(f"Error creating Excel-friendly file {EXCEL_FRIENDLY_FILE}: {e}")
 
 initialize_files()
 
@@ -156,15 +167,23 @@ def save_attendance(student_id, name, seat):
                 backup_writer.writeheader()
             backup_writer.writerow(row)
 
-        # Excel-friendly file (CP949 encoding)
+        # Excel-friendly file (UTF-8-SIG encoding with BOM)
         try:
-            with open(EXCEL_FRIENDLY_FILE, 'a', newline='', encoding='cp949') as excel_file:
-                excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-                if not os.path.exists(EXCEL_FRIENDLY_FILE) or os.path.getsize(EXCEL_FRIENDLY_FILE) == 0:
+            # 파일이 존재하는지 확인
+            file_exists = os.path.exists(EXCEL_FRIENDLY_FILE) and os.path.getsize(EXCEL_FRIENDLY_FILE) > 0
+            
+            # 파일이 없으면 헤더와 함께 새로 생성
+            if not file_exists:
+                with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as excel_file:
+                    excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                     excel_writer.writeheader()
+            
+            # 기존 파일에 행 추가
+            with open(EXCEL_FRIENDLY_FILE, 'a', newline='', encoding='utf-8-sig') as excel_file:
+                excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                 excel_writer.writerow(row)
-        except UnicodeEncodeError:
-            logging.error("Unicode encoding error when writing to Excel-friendly file")
+        except Exception as e:
+            logging.error(f"Excel-friendly 파일 저장 중 오류 발생: {e}")
             
         return True
 
@@ -230,11 +249,43 @@ def list_attendance():
 
 @app.route('/export')
 def export_csv():
-    """Export attendance records as CSV (admin only)"""
+    """Export attendance records as CSV (admin only) with proper UTF-8 encoding"""
     if not session.get('admin'):
         flash("관리자 로그인이 필요합니다.", "danger")
         return redirect('/admin')
-    return send_file(FILENAME, as_attachment=True, download_name="attendance.csv")
+        
+    # Excel용 CSV 파일 생성 (UTF-8 with BOM)
+    temp_file = 'temp_export.csv'
+    try:
+        # 원본 데이터 읽기
+        with open(FILENAME, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            
+        # UTF-8 with BOM으로 새 파일 작성
+        with open(temp_file, 'w', newline='', encoding='utf-8-sig') as f:
+            writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+            writer.writerows(data)
+            
+        # 파일 전송 후 파일 삭제를 위한 콜백 함수
+        def remove_temp_file():
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+                
+        return send_file(
+            temp_file, 
+            as_attachment=True, 
+            download_name="attendance.csv",
+            mimetype='text/csv',
+            # 파일 전송 후 임시 파일 삭제
+            after_this_request=remove_temp_file
+        )
+    except Exception as e:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        logging.error(f"CSV 내보내기 중 오류 발생: {e}")
+        flash(f"CSV 파일 생성 중 오류가 발생했습니다: {e}", "danger")
+        return redirect('/list')
 
 @app.route('/print')
 def print_view():
