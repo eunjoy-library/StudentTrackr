@@ -443,6 +443,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
+    { name = "pytz" },
 ]
 
 [package.metadata]
@@ -456,6 +457,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "pytz", specifier = ">=2025.2" },
 ]
 
 [[package]]

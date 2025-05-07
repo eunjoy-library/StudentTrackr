@@ -4,7 +4,11 @@ import pandas as pd
 import csv
 import os
 import logging
+import pytz
 from collections import Counter
+
+# 한국 시간대 설정
+KST = pytz.timezone('Asia/Seoul')
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,7 +19,8 @@ app.secret_key = os.environ.get("SESSION_SECRET", "fallback_secret_key_for_devel
 # Add datetime functions to templates
 @app.context_processor
 def inject_now():
-    return {'now': datetime.now}
+    # 항상 한국 시간을 사용하여 현재 시간 반환
+    return {'now': lambda: datetime.now(KST).replace(tzinfo=None)}
 
 # File configurations
 FILENAME = 'attendance.csv'
@@ -51,10 +56,11 @@ initialize_files()
 
 def get_current_period():
     """
-    Determine the current class period based on current time
+    Determine the current class period based on current time (Korean time)
     Returns period number (1-10) or 0 if outside scheduled periods
     """
-    now = datetime.now().time()
+    # 한국 시간 기준으로 현재 시간 가져오기
+    now = datetime.now(KST).time()
     for period, (start_h, start_m, end_h, end_m) in PERIOD_SCHEDULE.items():
         start = datetime.strptime(f"{start_h}:{start_m}", "%H:%M").time()
         end = datetime.strptime(f"{end_h}:{end_m}", "%H:%M").time()
@@ -89,7 +95,8 @@ def check_attendance(student_id):
         
     with open(FILENAME, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        one_week_ago = datetime.now() - timedelta(days=7)
+        # 한국 시간 기준으로 일주일 전 계산
+        one_week_ago = datetime.now(KST).replace(tzinfo=None) - timedelta(days=7)
         for r in reader:
             if r['학번'] == student_id:
                 try:
@@ -115,10 +122,11 @@ def load_attendance():
 
 def save_attendance(student_id, name, seat):
     """
-    Save attendance record to CSV files
+    Save attendance record to CSV files (with Korean time)
     """
     file_exists = os.path.exists(FILENAME)
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # 한국 시간 기준으로 현재 시간 저장
+    now = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
     period = get_current_period()
     period_text = f'{period}교시' if period > 0 else '시간 외'
     
@@ -161,13 +169,13 @@ def save_attendance(student_id, name, seat):
         return True
 
     except PermissionError:
-        error_msg = f"[{datetime.now()}] PermissionError: Could not write to {FILENAME}\n"
+        error_msg = f"[{datetime.now(KST)}] PermissionError: Could not write to {FILENAME}\n"
         with open(LOG_FILE, 'a', encoding='utf-8') as log:
             log.write(error_msg)
         flash("⚠️ 출석 파일이 열려 있어 저장할 수 없습니다. Excel 파일을 닫고 다시 시도해주세요.", "danger")
         return False
     except Exception as e:
-        error_msg = f"[{datetime.now()}] Error: {str(e)}\n"
+        error_msg = f"[{datetime.now(KST)}] Error: {str(e)}\n"
         with open(LOG_FILE, 'a', encoding='utf-8') as log:
             log.write(error_msg)
         flash(f"⚠️ 오류가 발생했습니다: {str(e)}", "danger")
