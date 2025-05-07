@@ -205,26 +205,7 @@
                 {% for period in sorted_periods %}
                     <div class="period-section period-{{ period[0] if period[0].isdigit() else 'other' }}">
                         <div class="period-header">
-                            <h3 class="h5 mb-0">
-                                {% if period_groups[period]|length > 0 %}
-                                    {% set dates = {} %}
-                                    {% for student in period_groups[period] %}
-                                        {% if student['날짜_ymd'] != '날짜 없음' %}
-                                            {% if student['날짜_ymd'] not in dates %}
-                                                {% set _ = dates.update({student['날짜_ymd']: 1}) %}
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endfor %}
-                                    
-                                    {% if dates|length == 1 %}
-                                        {{ dates.keys()|list|first }} {{ period }}
-                                    {% else %}
-                                        {{ period }} ({{ dates|length }}개 날짜)
-                                    {% endif %}
-                                {% else %}
-                                    {{ period }}
-                                {% endif %}
-                            </h3>
+                            <h3 class="h5 mb-0">{{ period }}</h3>
                             <div class="d-flex align-items-center">
                                 <span class="period-count me-2">{{ period_groups[period]|length }}명</span>
                                 <span class="copy-btn" data-period="{{ period }}" title="이 교시 학생 목록 복사">
