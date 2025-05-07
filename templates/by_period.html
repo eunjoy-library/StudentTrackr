@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
             // 교시명 옆에 날짜 추가하기
             const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
-            let copyText = `${periodHeader} 출석 명단 (${studentCards.length}명)\n\n`;
+            let copyText = `${periodHeader} 도서실에 있는 학생 명단입니다 (${studentCards.length}명)\n\n`;
             copyText += "이름\t학번\t좌석번호\n";
             
             studentCards.forEach(card => {
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(() => {
                     // 복사 성공 시 시각적 피드백
                     const toast = document.getElementById('copyToast');
-                    toast.textContent = `${periodHeader} 학생 명단이 클립보드에 복사되었습니다!`;
+                    toast.textContent = `${periodHeader} 도서실 학생 명단이 클립보드에 복사되었습니다!`;
                     toast.style.opacity = '1';
                     
                     // 복사 버튼에도 시각적 피드백
