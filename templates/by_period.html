@@ -205,7 +205,26 @@
                 {% for period in sorted_periods %}
                     <div class="period-section period-{{ period[0] if period[0].isdigit() else 'other' }}">
                         <div class="period-header">
-                            <h3 class="h5 mb-0">{{ period }}</h3>
+                            <h3 class="h5 mb-0">
+                                {% if period_groups[period]|length > 0 %}
+                                    {% set dates = {} %}
+                                    {% for student in period_groups[period] %}
+                                        {% if student['날짜_ymd'] != '날짜 없음' %}
+                                            {% if student['날짜_ymd'] not in dates %}
+                                                {% set _ = dates.update({student['날짜_ymd']: 1}) %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if dates|length == 1 %}
+                                        {{ dates.keys()|list|first }} {{ period }}
+                                    {% else %}
+                                        {{ period }} ({{ dates|length }}개 날짜)
+                                    {% endif %}
+                                {% else %}
+                                    {{ period }}
+                                {% endif %}
+                            </h3>
                             <div class="d-flex align-items-center">
                                 <span class="period-count me-2">{{ period_groups[period]|length }}명</span>
                                 <span class="copy-btn" data-period="{{ period }}" title="이 교시 학생 목록 복사">
@@ -289,8 +308,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!studentList) return;
             
             const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
-            // 날짜와 교시가 포함된 제목 사용
-            let copyText = `${period} 출석 명단 (${studentCards.length}명)\n\n`;
+            // 교시명 옆에 날짜 추가하기
+            const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
+            let copyText = `${periodHeader} 출석 명단 (${studentCards.length}명)\n\n`;
             copyText += "이름\t학번\t좌석번호\t날짜\n";
             
             studentCards.forEach(card => {
@@ -306,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(() => {
                     // 복사 성공 시 시각적 피드백
                     const toast = document.getElementById('copyToast');
-                    toast.textContent = `${period} 학생 명단이 클립보드에 복사되었습니다!`;
+                    toast.textContent = `${periodHeader} 학생 명단이 클립보드에 복사되었습니다!`;
                     toast.style.opacity = '1';
                     
                     // 복사 버튼에도 시각적 피드백

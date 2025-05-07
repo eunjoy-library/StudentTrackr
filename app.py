@@ -326,19 +326,25 @@ def by_period():
         # 교시를 키로 사용
         period_key = period
         
-        # 날짜 형식 변환 (YYYY-MM-DD -> MM월 DD일) - 디스플레이 용도
+        # 날짜 형식 변환 - 두 가지 형식 만들기
         if date != '날짜 없음':
             try:
                 date_obj = datetime.strptime(date, "%Y-%m-%d")
+                # MM월 DD일 형식 (카드 표시용)
                 date_formatted = f"{date_obj.month}월 {date_obj.day}일"
+                # YYYY/MM/DD 형식 (교시 제목용)
+                date_ymd = f"{date_obj.year}/{date_obj.month}/{date_obj.day}"
             except ValueError:
                 date_formatted = date
+                date_ymd = date
         else:
             date_formatted = date
+            date_ymd = date
         
         # 원본 기록에 날짜 정보 추가
         record_copy = record.copy()
         record_copy['날짜_표시'] = date_formatted
+        record_copy['날짜_ymd'] = date_ymd
         
         if period_key not in period_groups:
             period_groups[period_key] = []
