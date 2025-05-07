@@ -316,54 +316,51 @@ def by_period():
         
     records = load_attendance()
     
-    # 교시별로 학생 데이터 그룹화
-    period_groups = {}
+    # 날짜와 교시별로 학생 데이터 그룹화
+    period_date_groups = {}
     
     for record in records:
         date = record.get('출석일', '날짜 없음')
         period = record.get('교시', '시간 외')
         
-        # 교시를 키로 사용
-        period_key = period
-        
-        # 날짜 형식 변환 - 두 가지 형식 만들기
+        # 날짜 형식 변환 - YYYY/MM/DD 형식으로
         if date != '날짜 없음':
             try:
                 date_obj = datetime.strptime(date, "%Y-%m-%d")
-                # MM월 DD일 형식 (카드 표시용)
-                date_formatted = f"{date_obj.month}월 {date_obj.day}일"
-                # YYYY/MM/DD 형식 (교시 제목용)
                 date_ymd = f"{date_obj.year}/{date_obj.month}/{date_obj.day}"
             except ValueError:
-                date_formatted = date
                 date_ymd = date
         else:
-            date_formatted = date
             date_ymd = date
+        
+        # 날짜와 교시를 결합한 키 생성 (예: "2025/5/7 1교시")
+        period_date_key = f"{date_ymd} {period}"
         
         # 원본 기록에 날짜 정보 추가
         record_copy = record.copy()
-        record_copy['날짜_표시'] = date_formatted
         record_copy['날짜_ymd'] = date_ymd
         
-        if period_key not in period_groups:
-            period_groups[period_key] = []
+        if period_date_key not in period_date_groups:
+            period_date_groups[period_date_key] = []
         
-        period_groups[period_key].append(record_copy)
+        period_date_groups[period_date_key].append(record_copy)
     
-    # 교시 순서대로 정렬
-    sorted_periods = sorted(period_groups.keys(), key=lambda p: (
-        # 숫자 교시는 숫자 순서대로 정렬
-        int(p[0]) if p and p[0].isdigit() else 999,
-        # 나머지는 문자열 순서대로
+    # 날짜와 교시 순서대로 정렬
+    sorted_periods = sorted(period_date_groups.keys(), key=lambda p: (
+        # 날짜 없음은 맨 뒤로
+        1 if "날짜 없음" in p else 0,
+        # 날짜 기준 정렬 (최신 날짜가 위로)
+        p.split()[0] if len(p.split()) > 0 else "",
+        # 교시 정렬
+        int(p.split()[1][0]) if len(p.split()) > 1 and p.split()[1][0].isdigit() else 999,
         p
     ))
     
-    # 각 교시 내에서 날짜와 이름으로 정렬
-    for period in period_groups:
-        period_groups[period] = sorted(period_groups[period], key=lambda r: (r.get('출석일', ''), r['이름']))
+    # 각 날짜+교시 내에서 이름으로 정렬
+    for period_date in period_date_groups:
+        period_date_groups[period_date] = sorted(period_date_groups[period_date], key=lambda r: r['이름'])
     
-    return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
+    return render_template('by_period.html', period_groups=period_date_groups, sorted_periods=sorted_periods)
 
 @app.route('/logout')
 def logout():

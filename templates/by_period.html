@@ -244,9 +244,6 @@
                                     <span class="sort-btn" data-sort="seat" data-period="{{ period }}">
                                         좌석번호순 <i class="fas fa-sort"></i>
                                     </span>
-                                    <span class="sort-btn" data-sort="date" data-period="{{ period }}">
-                                        날짜순 <i class="fas fa-sort"></i>
-                                    </span>
                                 </div>
                                 <div class="student-list" id="student-list-{{ period|replace(' ', '-')|replace('교시', '') }}">
                                 {% for student in period_groups[period] %}
@@ -258,7 +255,6 @@
                                         <div class="student-info">
                                             <span class="student-name">{{ student['이름'] }}</span>
                                             <span class="student-id">{{ student['학번'] }}</span>
-                                            <span class="student-date">({{ student['날짜_표시'] }})</span>
                                         </div>
                                         <div class="student-seat">
                                             <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
@@ -311,14 +307,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // 교시명 옆에 날짜 추가하기
             const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
             let copyText = `${periodHeader} 출석 명단 (${studentCards.length}명)\n\n`;
-            copyText += "이름\t학번\t좌석번호\t날짜\n";
+            copyText += "이름\t학번\t좌석번호\n";
             
             studentCards.forEach(card => {
                 const name = card.dataset.name;
                 const id = card.dataset.id;
                 const seat = card.dataset.seat;
-                const date = card.dataset.date;
-                copyText += `${name}\t${id}\t${seat}\t${date}\n`;
+                copyText += `${name}\t${id}\t${seat}\n`;
             });
             
             // 클립보드에 복사
@@ -412,10 +407,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 aValue = parseInt(a.dataset.seat) || 0;
                 bValue = parseInt(b.dataset.seat) || 0;
                 return direction === 'asc' ? aValue - bValue : bValue - aValue;
-            } else if (sortType === 'date') {
-                aValue = a.dataset.date;
-                bValue = b.dataset.date;
-                return compareValues(aValue, bValue, direction);
             }
         });
         
