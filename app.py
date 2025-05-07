@@ -23,7 +23,7 @@ BACKUP_FILE = 'attendance_backup.csv'
 LOG_FILE = 'attendance_error.log'
 EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
 STUDENT_FILE = 'students.xlsx'
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")  # Default is "admin1234" if not set in environment
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")  # Default is "1234" if not set in environment
 
 # Period schedule configuration
 PERIOD_SCHEDULE = {
