@@ -106,6 +106,13 @@
         font-size: 0.9rem;
     }
     
+    .student-date {
+        color: #0d6efd;
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+        font-weight: 500;
+    }
+    
     .student-seat {
         background-color: #e9ecef;
         padding: 0.25rem 0.5rem;
@@ -218,16 +225,21 @@
                                     <span class="sort-btn" data-sort="seat" data-period="{{ period }}">
                                         좌석번호순 <i class="fas fa-sort"></i>
                                     </span>
+                                    <span class="sort-btn" data-sort="date" data-period="{{ period }}">
+                                        날짜순 <i class="fas fa-sort"></i>
+                                    </span>
                                 </div>
                                 <div class="student-list" id="student-list-{{ period|replace(' ', '-')|replace('교시', '') }}">
                                 {% for student in period_groups[period] %}
                                     <div class="student-card" 
                                          data-name="{{ student['이름'] }}" 
                                          data-id="{{ student['학번'] }}" 
-                                         data-seat="{{ student['공강좌석번호'] }}">
+                                         data-seat="{{ student['공강좌석번호'] }}"
+                                         data-date="{{ student['날짜_표시'] }}">
                                         <div class="student-info">
                                             <span class="student-name">{{ student['이름'] }}</span>
                                             <span class="student-id">{{ student['학번'] }}</span>
+                                            <span class="student-date">({{ student['날짜_표시'] }})</span>
                                         </div>
                                         <div class="student-seat">
                                             <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
@@ -279,13 +291,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
             // 날짜와 교시가 포함된 제목 사용
             let copyText = `${period} 출석 명단 (${studentCards.length}명)\n\n`;
-            copyText += "이름\t학번\t좌석번호\n";
+            copyText += "이름\t학번\t좌석번호\t날짜\n";
             
             studentCards.forEach(card => {
                 const name = card.dataset.name;
                 const id = card.dataset.id;
                 const seat = card.dataset.seat;
-                copyText += `${name}\t${id}\t${seat}\n`;
+                const date = card.dataset.date;
+                copyText += `${name}\t${id}\t${seat}\t${date}\n`;
             });
             
             // 클립보드에 복사
@@ -379,6 +392,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 aValue = parseInt(a.dataset.seat) || 0;
                 bValue = parseInt(b.dataset.seat) || 0;
                 return direction === 'asc' ? aValue - bValue : bValue - aValue;
+            } else if (sortType === 'date') {
+                aValue = a.dataset.date;
+                bValue = b.dataset.date;
+                return compareValues(aValue, bValue, direction);
             }
         });
         
