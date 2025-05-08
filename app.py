@@ -429,6 +429,76 @@ def by_period():
     
     return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
 
+@app.route('/delete_records', methods=['POST'])
+def delete_records():
+    """Delete selected attendance records (admin only)"""
+    if not session.get('admin'):
+        return jsonify({'success': False, 'error': '관리자 권한이 필요합니다.'}), 403
+    
+    try:
+        # 삭제할 기록 받기
+        data = request.get_json()
+        records_to_delete = data.get('records', [])
+        
+        if not records_to_delete:
+            return jsonify({'success': False, 'error': '삭제할 기록이 선택되지 않았습니다.'}), 400
+        
+        # 파일 읽기
+        if not os.path.exists(FILENAME):
+            return jsonify({'success': False, 'error': '출석 기록 파일이 존재하지 않습니다.'}), 404
+        
+        # 기존 기록 읽기
+        with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            all_records = list(reader)
+            
+        # 백업 파일 생성
+        with open(BACKUP_FILE, 'w', newline='', encoding='utf-8') as f:
+            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_records)
+        
+        # 삭제할 기록들을 파싱
+        records_set = set()
+        for record_str in records_to_delete:
+            parts = record_str.split(',')
+            if len(parts) >= 5:  # 출석일, 교시, 학번, 이름, 좌석번호
+                # 출석일과 학번, 이름으로 식별 (고유 키로 사용)
+                records_set.add((parts[0], parts[2], parts[3]))
+        
+        # 삭제되지 않을 기록만 필터링
+        filtered_records = []
+        for record in all_records:
+            key = (record['출석일'], record['학번'], record['이름'])
+            if key not in records_set:
+                filtered_records.append(record)
+        
+        # 필터링된 기록 저장
+        with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
+            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(filtered_records)
+        
+        # Excel 호환 파일도 업데이트
+        with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
+            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(filtered_records)
+            
+        deleted_count = len(all_records) - len(filtered_records)
+        return jsonify({
+            'success': True, 
+            'message': f'{deleted_count}개의 기록이 삭제되었습니다.',
+            'deleted_count': deleted_count
+        })
+    
+    except Exception as e:
+        logging.error(f"Error deleting records: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/logout')
 def logout():
     """Logout from admin"""
