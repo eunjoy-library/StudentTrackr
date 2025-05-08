@@ -162,6 +162,27 @@
         </div>
     </div>
     <div class="card-body">
+        <!-- 검색 필터 섹션 -->
+        <div class="row mb-4">
+            <div class="col-md-8 col-lg-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-primary text-white">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="학번, 이름, 교시로 검색..." aria-label="검색">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="form-text text-muted mt-1">
+                    <i class="fas fa-info-circle me-1"></i>검색어를 입력하면 실시간으로 결과가 필터링됩니다.
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-6 d-flex align-items-center justify-content-md-end mt-3 mt-md-0">
+                <span class="text-secondary me-2" id="resultCount">전체: {{ records|length }}명</span>
+            </div>
+        </div>
+        
         <div class="table-responsive">
             <table class="table table-hover table-striped" id="attendanceTable">
                 <thead class="table-dark">
@@ -196,6 +217,13 @@
                             <td>{{ r['공강좌석번호'] }}</td>
                         </tr>
                         {% endfor %}
+                        <tr id="noSearchResults" style="display: none;">
+                            <td colspan="6" class="text-center py-4">
+                                <div class="alert alert-warning mb-0">
+                                    <i class="fas fa-search me-2"></i>검색 결과가 없습니다. 다른 검색어를 입력해주세요.
+                                </div>
+                            </td>
+                        </tr>
                     {% else %}
                         <tr>
                             <td colspan="6" class="text-center py-4">
@@ -319,6 +347,67 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 초기 삭제 버튼 상태 설정
     updateDeleteButtonState();
+    
+    // 검색 기능 구현
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const resultCountSpan = document.getElementById('resultCount');
+    const tableRows = document.querySelectorAll('#attendanceTable tbody tr');
+    const totalCount = tableRows.length;
+    
+    // 테이블 필터링 함수
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+        
+        tableRows.forEach(row => {
+            // 검색어가 비어있으면 모든 행 표시
+            if (!searchTerm) {
+                row.style.display = '';
+                visibleCount++;
+                return;
+            }
+            
+            // 각 셀의 텍스트 추출 (체크박스 셀 제외)
+            const cells = Array.from(row.querySelectorAll('td')).slice(1); // 첫 번째 열(체크박스) 제외
+            const rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' ');
+            
+            // 검색어가 포함되어 있는지 확인
+            const matches = rowText.includes(searchTerm);
+            row.style.display = matches ? '' : 'none';
+            
+            if (matches) visibleCount++;
+        });
+        
+        // 결과 카운트 업데이트
+        resultCountSpan.textContent = `검색결과: ${visibleCount}/${totalCount}명`;
+        
+        // "검색 결과 없음" 메시지 표시/숨김
+        const noResultsRow = document.getElementById('noSearchResults');
+        if (noResultsRow) {
+            if (searchTerm && visibleCount === 0) {
+                noResultsRow.style.display = 'table-row';
+            } else {
+                noResultsRow.style.display = 'none';
+            }
+        }
+        
+        // 클리어 버튼 상태 업데이트
+        clearSearchBtn.disabled = !searchTerm;
+    }
+    
+    // 검색 입력 이벤트
+    searchInput.addEventListener('input', filterTable);
+    
+    // 클리어 버튼 클릭 이벤트
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterTable();
+        searchInput.focus();
+    });
+    
+    // 초기 상태 설정
+    clearSearchBtn.disabled = true;
 });
 </script>
 {% endblock %}
