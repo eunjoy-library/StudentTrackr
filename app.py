@@ -417,8 +417,16 @@ def by_period():
         
         period_groups[new_period_key]['학생_목록'].append(record_copy)
     
-    # 교시 번호순으로 정렬
-    sorted_periods = sorted(period_groups.keys(), key=lambda p: period_groups[p]['교시_번호'])
+    # 최근 날짜 교시가 먼저 나오도록 정렬 (날짜 최신순, 그 다음 교시 번호순)
+    sorted_periods = sorted(
+        period_groups.keys(), 
+        key=lambda p: (
+            # 각 교시 그룹의 첫 번째 학생의 날짜를 가져와 최신 날짜가 먼저 오도록 정렬
+            -1 * period_groups[p]['학생_목록'][0]['원본_날짜'].timestamp() if period_groups[p]['학생_목록'] else -1,
+            # 같은 날짜라면 교시 번호 순으로 정렬
+            period_groups[p]['교시_번호']
+        )
+    )
     
     # 각 교시 내에서 학생을 날짜 최신순, 이름으로 정렬
     for period in period_groups:
