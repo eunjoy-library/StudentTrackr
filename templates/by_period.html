@@ -208,10 +208,18 @@
                 {% for period in sorted_periods %}
                     <div class="period-section period-{{ period[0] if period[0].isdigit() else 'other' }}">
                         <div class="period-header">
-                            <h3 class="h5 mb-0">{{ period }}</h3>
+                            <div class="d-flex align-items-center">
+                                <h3 class="h5 mb-0">{{ period }}</h3>
+                                <div class="form-check ms-2">
+                                    <input class="form-check-input select-all-checkbox" 
+                                           type="checkbox" checked 
+                                           data-period="{{ period }}"
+                                           title="전체 선택/해제">
+                                </div>
+                            </div>
                             <div class="d-flex align-items-center">
                                 <span class="period-count me-2">{{ period_groups[period]['학생_목록']|length }}명</span>
-                                <span class="copy-btn" data-period="{{ period }}" title="이 교시 학생 목록 복사">
+                                <span class="copy-btn" data-period="{{ period }}" title="체크된 학생 목록만 복사">
                                     <i class="fas fa-copy"></i>
                                 </span>
                             </div>
@@ -241,8 +249,13 @@
                                             <span class="student-id">{{ student['학번'] }}</span>
                                             <!-- 날짜 표시 제거됨 -->
                                         </div>
-                                        <div class="student-seat">
-                                            <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
+                                        <div class="d-flex align-items-center">
+                                            <div class="student-seat me-2">
+                                                <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input student-check" type="checkbox" checked>
+                                            </div>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -288,15 +301,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!studentList) return;
             
+            // 체크된 카드만 선택
             const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
+            const checkedCards = studentCards.filter(card => {
+                const checkBox = card.querySelector('.student-check');
+                return checkBox && checkBox.checked;
+            });
+            
             // 교시명 이용 - n월n일n교시 도서실에 있는 학생 명단입니다~! 형식으로 변경
             const periodHeader = studentList.closest('.period-section').querySelector('.period-header h3').textContent.trim();
             // 공백을 제거하여 "n월n일n교시" 형식으로 만들기
             const periodHeaderNoSpace = periodHeader.replace(/ /g, '');
-            let copyText = `${periodHeaderNoSpace} 도서실에 있는 학생 명단입니다~!\n\n`;
+            
+            // 체크된 학생 수 표시
+            const totalStudents = studentCards.length;
+            const checkedStudents = checkedCards.length;
+            
+            let copyText = `${periodHeaderNoSpace} 도서실에 있는 학생 명단입니다~!\n`;
+            copyText += `(전체 ${totalStudents}명 중 ${checkedStudents}명 출석 확인)\n\n`;
             copyText += "이름\t학번\t좌석번호\n";
             
-            studentCards.forEach(card => {
+            checkedCards.forEach(card => {
                 // 날짜 정보 없이 복사
                 const name = card.dataset.name;
                 const id = card.dataset.id;
@@ -310,7 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(() => {
                     // 복사 성공 시 시각적 피드백
                     const toast = document.getElementById('copyToast');
-                    toast.textContent = `${periodHeaderNoSpace} 도서실 학생 명단이 클립보드에 복사되었습니다~!`;
+                    toast.innerHTML = `${periodHeaderNoSpace} 도서실 학생 명단이 클립보드에 복사되었습니다~!<br>
+                                     <small>전체 ${totalStudents}명 중 ${checkedStudents}명 출석 확인</small>`;
                     toast.style.opacity = '1';
                     
                     // 복사 버튼에도 시각적 피드백
@@ -414,6 +440,45 @@ document.addEventListener('DOMContentLoaded', function() {
             return b.localeCompare(a, 'ko');
         }
     }
+    
+    // 전체 선택/해제 체크박스에 이벤트 리스너 등록
+    document.querySelectorAll('.select-all-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const period = this.dataset.period;
+            const periodId = createPeriodId(period);
+            const studentList = document.getElementById(`student-list-${periodId}`);
+            
+            if (!studentList) return;
+            
+            const isChecked = this.checked;
+            const studentCheckboxes = studentList.querySelectorAll('.student-check');
+            
+            // 모든 학생 체크박스 상태를 변경
+            studentCheckboxes.forEach(cb => {
+                cb.checked = isChecked;
+            });
+        });
+    });
+    
+    // 개별 체크박스 상태 변경 시 전체 선택 체크박스 상태 업데이트
+    document.querySelectorAll('.student-check').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const studentCard = this.closest('.student-card');
+            const studentList = studentCard.closest('.student-list');
+            const periodSection = studentList.closest('.period-section');
+            const selectAllCheckbox = periodSection.querySelector('.select-all-checkbox');
+            
+            if (!selectAllCheckbox) return;
+            
+            const allCheckboxes = studentList.querySelectorAll('.student-check');
+            const checkedCount = studentList.querySelectorAll('.student-check:checked').length;
+            
+            // 모든 체크박스가 선택된 경우 전체 선택 체크박스도 선택, 아니면 해제
+            selectAllCheckbox.checked = (checkedCount === allCheckboxes.length);
+            
+            // 부분 선택 상태 표시 (미래에 구현 가능)
+        });
+    });
 });
 </script>
 {% endblock %}
