@@ -329,8 +329,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const totalStudents = studentCards.length;
             const checkedStudents = checkedCards.length;
             
-            let copyText = `${periodHeaderNoSpace} 도서실에 있는 학생 명단입니다~!\n`;
-            copyText += `(전체 ${totalStudents}명 중 ${checkedStudents}명 출석 확인)\n\n`;
+            // 공백을 추가하여 "n월 n일 n교시" 형식으로 변경
+            const periodFormatted = periodHeaderNoSpace.replace(/(\d+)월(\d+)일(\d+)교시/, "$1월 $2일 $3교시");
+            let copyText = `${periodFormatted} 도서실에 있는 학생 명단입니다~!\n\n`;
             copyText += "이름\t학번\t좌석번호\n";
             
             checkedCards.forEach(card => {
@@ -347,8 +348,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(() => {
                     // 복사 성공 시 시각적 피드백
                     const toast = document.getElementById('copyToast');
-                    toast.innerHTML = `${periodHeaderNoSpace} 도서실 학생 명단이 클립보드에 복사되었습니다~!<br>
-                                     <small>전체 ${totalStudents}명 중 ${checkedStudents}명 출석 확인</small>`;
+                    // 공백을 추가하여 "n월 n일 n교시" 형식으로 변경
+                    const toastPeriodFormatted = periodHeaderNoSpace.replace(/(\d+)월(\d+)일(\d+)교시/, "$1월 $2일 $3교시");
+                    toast.innerHTML = `${toastPeriodFormatted} 도서실 학생 명단이 클립보드에 복사되었습니다~!`;
                     toast.style.opacity = '1';
                     
                     // 복사 버튼에도 시각적 피드백
