@@ -48,30 +48,32 @@
             </div>
             <div class="card-body">
                 <form method="post" class="needs-validation" novalidate>
-                    <div class="mb-3">
-                        <label for="student_id" class="form-label">학번</label>
-                        <div class="input-group">
+                    <div class="mb-4">
+                        <label for="student_id" class="form-label fs-5">학번</label>
+                        <div class="input-group input-group-lg">
                             <span class="input-group-text"><i class="fas fa-id-card"></i></span>
-                            <input type="text" id="student_id" name="student_id" class="form-control" 
-                                   placeholder="학번을 입력하세요 예)10101" required autocomplete="off">
+                            <input type="text" id="student_id" name="student_id" class="form-control form-control-lg py-3" 
+                                   placeholder="학번을 입력하세요 예)10101" required autocomplete="off"
+                                   style="font-size: 1.2rem;">
                             <div class="invalid-feedback">
                                 학번을 입력해주세요.
                             </div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="name" class="form-label">이름</label>
-                        <div class="input-group">
+                    <div class="mb-4">
+                        <label for="name" class="form-label fs-5">이름</label>
+                        <div class="input-group input-group-lg">
                             <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" id="name" name="name" class="form-control" 
-                                   placeholder="이름을 입력하세요 예) 한가람" required autocomplete="off">
+                            <input type="text" id="name" name="name" class="form-control form-control-lg py-3" 
+                                   placeholder="이름을 입력하세요 예) 한가람" required autocomplete="off"
+                                   style="font-size: 1.2rem;">
                             <div class="invalid-feedback">
                                 이름을 입력해주세요.
                             </div>
                         </div>
                     </div>
-                    <div class="d-grid">
-                        <button type="submit" id="submitBtn" class="btn btn-primary">
+                    <div class="d-grid mt-4">
+                        <button type="submit" id="submitBtn" class="btn btn-primary btn-lg py-3" style="font-size: 1.25rem; font-weight: bold;">
                             <i class="fas fa-check-circle me-2"></i>출석하기
                         </button>
                     </div>
