@@ -317,6 +317,11 @@
                             </div>
                             <div class="d-flex align-items-center">
                                 <span class="period-count me-2">{{ period_groups[period]['학생_목록']|length }}명</span>
+                                <button class="btn btn-sm btn-outline-light me-2 delete-checked-btn" 
+                                        data-period="{{ period }}" 
+                                        title="체크된 학생 삭제">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
                                 <span class="copy-btn" data-period="{{ period }}" title="체크된 학생 목록만 복사">
                                     <i class="fas fa-copy"></i>
                                 </span>
@@ -357,6 +362,13 @@
                                             <div class="student-seat me-2">
                                                 <i class="fas fa-chair me-1"></i>{{ student['공강좌석번호'] }}
                                             </div>
+                                            <button class="btn btn-sm btn-outline-danger me-2 delete-btn" 
+                                                   data-id="{{ student['학번'] }}"
+                                                   data-date="{{ student['출석일'] if '출석일' in student else '' }}"
+                                                   data-period="{{ student['교시'] if '교시' in student else '' }}"
+                                                   title="삭제">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
                                             <div class="form-check">
                                                 <input class="form-check-input student-check" type="checkbox">
                                             </div>
