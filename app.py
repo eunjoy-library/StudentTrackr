@@ -256,7 +256,7 @@ def admin_login():
         password = request.form.get('password')
         if password == ADMIN_PASSWORD:
             session['admin'] = True
-            return redirect('/list')
+            return redirect('/by_period')
         else:
             flash('❌ 비밀번호가 틀렸습니다.', "danger")
     return render_template('admin_login.html')

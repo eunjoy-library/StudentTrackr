@@ -107,27 +107,27 @@
                     <div class="collapse navbar-collapse" id="adminNav">
                         <ul class="navbar-nav ms-auto">
                             <li class="nav-item">
-                                <a class="nav-link" href="/list">
-                                    <i class="fas fa-list"></i> 출석 명단
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/export">
-                                    <i class="fas fa-file-export"></i> CSV 다운로드
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/print">
-                                    <i class="fas fa-print"></i> 출석 출력
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/by_period">
+                                <a class="nav-link {% if request.path == '/by_period' %}active{% endif %}" href="/by_period">
                                     <i class="fas fa-clock"></i> 교시별 보기
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="/stats">
+                                <a class="nav-link {% if request.path == '/list' %}active{% endif %}" href="/list">
+                                    <i class="fas fa-list"></i> 출석 명단
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/export' %}active{% endif %}" href="/export">
+                                    <i class="fas fa-file-export"></i> CSV 다운로드
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/print' %}active{% endif %}" href="/print">
+                                    <i class="fas fa-print"></i> 출석 출력
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/stats' %}active{% endif %}" href="/stats">
                                     <i class="fas fa-chart-bar"></i> 통계
                                 </a>
                             </li>
