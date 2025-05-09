@@ -109,8 +109,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     nameInput.value = data.name;
                     
                     // 확인 메시지 구성
-                    const seatInfo = data.seat ? `(좌석: ${data.seat})` : '';
-                    const confirmMessage = `${data.name} 님${seatInfo}이 맞습니까?`;
+                    const seatInfo = data.seat ? `\n좌석: ${data.seat}` : '';
+                    const confirmMessage = `선택하신 정보가 맞습니까?\n이름: ${data.name}${seatInfo}`;
                     
                     // 사용자 확인 요청
                     if (confirm(confirmMessage)) {
@@ -118,13 +118,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         form.submit();
                     }
                 } else {
-                    alert("학번이 존재하지 않습니다.");
+                    alert("입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.");
                     nameInput.value = '';
                 }
             })
             .catch(err => {
                 console.error("학생 정보 조회 중 오류 발생", err);
-                alert("학생 정보 조회 중 오류가 발생했습니다.");
+                alert("학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.");
             });
     });
 
