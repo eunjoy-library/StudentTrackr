@@ -5,11 +5,11 @@
 {% block content %}
 <!-- 커스텀 모달 -->
 <div class="modal-background" id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;">
-    <div class="modal-content" style="background: white; width: 300px; margin: 150px auto; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
-        <p id="studentInfoText"></p>
-        <div class="modal-buttons" style="margin-top: 20px;">
-            <button id="modalConfirmBtn" class="btn btn-primary" style="margin: 0 10px;">확인</button>
-            <button id="modalCancelBtn" class="btn btn-secondary" style="margin: 0 10px;">취소</button>
+    <div class="modal-content" style="background: white; width: 400px; margin: 150px auto; padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <p id="studentInfoText" style="font-size: 18px; color: #000; margin-bottom: 20px;"></p>
+        <div class="modal-buttons" style="margin-top: 25px;">
+            <button id="modalConfirmBtn" class="btn btn-primary btn-lg" style="margin: 0 15px; min-width: 100px;">확인</button>
+            <button id="modalCancelBtn" class="btn btn-secondary btn-lg" style="margin: 0 15px; min-width: 100px;">취소</button>
         </div>
     </div>
 </div>
@@ -121,11 +121,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     // 모달에 정보 표시
                     const studentName = data.name;
-                    const seatInfo = data.seat ? `(좌석: ${data.seat})` : '';
+                    const seatInfo = data.seat ? data.seat : '정보 없음';
                     
                     // 모달 내용 설정
                     document.getElementById('studentInfoText').innerHTML = 
-                        `<strong>${studentName} 님${seatInfo}</strong>이 맞습니까?`;
+                        `선택하신 정보가 맞습니까?<br><br>
+                        <div style="font-size: 20px; font-weight: bold; color: #000;">
+                            <div style="margin-bottom: 10px;">이름: ${studentName} 님</div>
+                            <div>좌석: ${seatInfo}</div>
+                        </div>`;
                     
                     // 모달 열기
                     document.getElementById('customModal').style.display = 'block';
