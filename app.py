@@ -514,6 +514,16 @@ def logout():
     session.pop('admin', None)
     flash("로그아웃 되었습니다.", "success")
     return redirect('/')
+@app.route('/lookup_name')
+def lookup_name():
+    student_id = request.args.get('student_id')
+    student_data = load_student_data()
+    student_info = student_data.get(student_id)
+
+    if student_info:
+        return jsonify({'success': True, 'name': student_info[0]})
+    else:
+        return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

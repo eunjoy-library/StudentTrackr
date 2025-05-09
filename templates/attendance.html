@@ -12,13 +12,10 @@
                 </h1>
             </div>
             <div class="alert alert-info m-3 p-3 position-relative" style="overflow: hidden;">
-                <!-- 배경에 시계 아이콘 추가 -->
                 <div class="position-absolute" style="top: -15px; right: -15px; opacity: 0.1; font-size: 8rem;">
                     <i class="fas fa-clock"></i>
                 </div>
-                
                 <div class="row align-items-center position-relative">
-                    <!-- 날짜 및 시간 섹션 -->
                     <div class="col-12 text-center mb-3">
                         <div class="d-inline-block p-2 rounded shadow-sm bg-white time-display" style="min-width: 300px;">
                             <h4 class="mb-0 py-1">
@@ -26,21 +23,18 @@
                             </h4>
                         </div>
                     </div>
-                    
-                    <!-- 교시 정보 섹션 -->
                     <div class="col-12 text-center">
                         <div class="d-flex justify-content-center align-items-center">
                             <div class="text-center p-3 rounded border border-secondary shadow-sm period-time-info" 
-                                style="background-color: rgba(255,255,255,0.9); min-width: 220px;">
+                                 style="background-color: rgba(255,255,255,0.9); min-width: 220px;">
                                 <div class="mb-2">
                                     <span class="badge bg-dark" style="font-size: 0.9rem;">현재 교시</span>
                                 </div>
                                 <div>
                                     <span id="currentPeriod" class="badge bg-primary" 
-                                        style="font-size: 1.3rem; padding: 0.5rem 0.8rem;"></span>
+                                          style="font-size: 1.3rem; padding: 0.5rem 0.8rem;"></span>
                                 </div>
-                                <div class="mt-2 fw-bold" id="periodTimeRange" 
-                                    style="font-size: 1rem;"></div>
+                                <div class="mt-2 fw-bold" id="periodTimeRange" style="font-size: 1rem;"></div>
                             </div>
                         </div>
                     </div>
@@ -52,28 +46,26 @@
                         <label for="student_id" class="form-label fs-5">학번</label>
                         <div class="input-group input-group-lg">
                             <span class="input-group-text"><i class="fas fa-id-card"></i></span>
-                            <input type="text" id="student_id" name="student_id" class="form-control form-control-lg py-3" 
-                                   placeholder="학번을 입력하세요 예)10101" required autocomplete="off"
-                                   style="font-size: 1.2rem;">
-                            <div class="invalid-feedback">
-                                학번을 입력해주세요.
-                            </div>
+                            <input type="text" id="student_id" name="student_id" class="form-control form-control-lg py-3"
+                                   placeholder="학번을 입력하세요 예)10101" required autocomplete="off" style="font-size: 1.2rem;">
+                            <div class="invalid-feedback">학번을 입력해주세요.</div>
                         </div>
                     </div>
-                    <div class="mb-4">
-                        <label for="name" class="form-label fs-5">이름</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" id="name" name="name" class="form-control form-control-lg py-3" 
-                                   placeholder="이름을 입력하세요 예) 한가람" required autocomplete="off"
-                                   style="font-size: 1.2rem;">
-                            <div class="invalid-feedback">
-                                이름을 입력해주세요.
+                    <!-- 이름 입력 필드 (숨김) -->
+                    <input type="hidden" id="name" name="name" required>
+                    
+                    <!-- 학생 정보 표시 -->
+                    <div id="studentInfo" class="alert alert-info mb-4" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-circle fa-2x me-3"></i>
+                            <div>
+                                <div class="fs-5 fw-bold" id="studentNameDisplay"></div>
+                                <div class="text-muted" id="studentSeatDisplay"></div>
                             </div>
                         </div>
                     </div>
                     <div class="d-grid mt-4">
-                        <button type="submit" id="submitBtn" class="btn btn-primary btn-lg py-3" style="font-size: 1.25rem; font-weight: bold;">
+                        <button type="submit" id="submitBtn" class="btn btn-primary btn-lg py-3" style="font-size: 1.25rem; font-weight: bold;" disabled>
                             <i class="fas fa-check-circle me-2"></i>출석하기
                         </button>
                     </div>
@@ -92,142 +84,153 @@
 
 {% block scripts %}
 <script>
-// Dynamic time and period update
-function updateTimeAndPeriod() {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const second = now.getSeconds();
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('form');
+    const studentIdInput = document.getElementById('student_id');
+    const nameInput = document.getElementById('name');
+    const studentInfo = document.getElementById('studentInfo');
+    const studentNameDisplay = document.getElementById('studentNameDisplay');
+    const studentSeatDisplay = document.getElementById('studentSeatDisplay');
+    const submitBtn = document.getElementById('submitBtn');
     
-    // Format the time with leading zeros
-    const formattedHour = hour.toString().padStart(2, '0');
-    const formattedMinute = minute.toString().padStart(2, '0');
-    const formattedSecond = second.toString().padStart(2, '0');
-
-    let period = '시간 외';
-    let periodNumber = 0;
-    
-    const schedule = [
-        [7, 50, 9, 15], [9, 15, 10, 40], [10, 40, 12, 5], [12, 5, 12, 30],
-        [12, 30, 14, 25], [14, 25, 15, 50]
-    ];
-    
-    let currentPeriodStartTime = '';
-    let currentPeriodEndTime = '';
-    
-    for (let i = 0; i < schedule.length; i++) {
-        const [sh, sm, eh, em] = schedule[i];
-        const start = new Date(); start.setHours(sh, sm, 0);
-        const end = new Date(); end.setHours(eh, em, 0);
-        const current = new Date(); current.setHours(hour, minute, second);
-        
-        if (current >= start && current < end) {
-            periodNumber = i + 1;
-            period = periodNumber + '교시';
-            currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
-            currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
-            break;
+    // 학번 입력 시 자동으로 학생 정보 조회
+    studentIdInput.addEventListener('input', function() {
+        // 입력된 학번이 5자 이상인 경우에만 조회 시도
+        if (this.value.trim().length >= 5) {
+            findStudentInfo(this.value.trim());
+        } else {
+            // 학번 입력값이 짧으면 정보 숨김
+            studentInfo.style.display = 'none';
+            nameInput.value = '';
         }
+    });
+    
+    // 학생 정보 찾기 함수
+    function findStudentInfo(studentId) {
+        fetch(`/lookup_name?student_id=${studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 학생 정보 표시
+                    nameInput.value = data.name;
+                    studentNameDisplay.textContent = data.name + ' 님';
+                    studentSeatDisplay.textContent = data.seat ? `좌석: ${data.seat}` : '좌석 정보 없음';
+                    studentInfo.style.display = 'block';
+                    // 버튼 활성화 및 텍스트 변경
+                    submitBtn.disabled = false;
+                } else {
+                    // 학생 정보 숨김
+                    studentInfo.style.display = 'none';
+                    nameInput.value = '';
+                    // 버튼 비활성화
+                    submitBtn.disabled = true;
+                }
+            })
+            .catch(err => {
+                console.error("학생 정보 조회 중 오류 발생", err);
+                studentInfo.style.display = 'none';
+                nameInput.value = '';
+                submitBtn.disabled = true;
+            });
     }
-    
-    // Get day of week in Korean
-    const dayOfWeekNames = ['일', '월', '화', '수', '목', '금', '토'];
-    const dayOfWeek = dayOfWeekNames[now.getDay()];
-    
-    // Update the month and day display
-    const currentMonthDayEl = document.getElementById("currentMonthDay");
-    if (currentMonthDayEl) {
-        currentMonthDayEl.innerHTML = `
+
+    // 폼 제출 처리
+    form.addEventListener('submit', function (event) {
+        // 이름 값이 없으면 제출 방지
+        if (!nameInput.value.trim()) {
+            event.preventDefault();
+            alert("유효한 학번을 입력해주세요.");
+            return;
+        }
+    });
+
+    function updateTimeAndPeriod() {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        const second = now.getSeconds();
+
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        const formattedSecond = second.toString().padStart(2, '0');
+
+        let period = '시간 외';
+        let periodNumber = 0;
+
+        const schedule = [
+            [7, 50, 9, 15], [9, 15, 10, 40], [10, 40, 12, 5], [12, 5, 12, 30],
+            [12, 30, 14, 25], [14, 25, 15, 50]
+        ];
+
+        let currentPeriodStartTime = '', currentPeriodEndTime = '';
+
+        for (let i = 0; i < schedule.length; i++) {
+            const [sh, sm, eh, em] = schedule[i];
+            const start = new Date(); start.setHours(sh, sm, 0);
+            const end = new Date(); end.setHours(eh, em, 0);
+            const current = new Date(); current.setHours(hour, minute, second);
+
+            if (current >= start && current < end) {
+                periodNumber = i + 1;
+                period = `${periodNumber}교시`;
+                currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+                currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
+                break;
+            }
+        }
+
+        const dayOfWeekNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const dayOfWeek = dayOfWeekNames[now.getDay()];
+
+        document.getElementById("currentMonthDay").innerHTML = `
             <span class="badge bg-primary me-1">${month}월</span>
             <span class="badge bg-primary me-1">${day}일</span>
             <span class="badge bg-secondary me-2">(${dayOfWeek})</span>
             <span class="fw-bold">${formattedHour}:<span class="time-blink">${formattedMinute}</span>:<span class="seconds-blink">${formattedSecond}</span></span>
         `;
-    }
-    
-    // Update the period display
-    const currentPeriodEl = document.getElementById("currentPeriod");
-    if (currentPeriodEl) {
-        currentPeriodEl.textContent = period;
-        // Change badge color based on period
+
+        const currentPeriodEl = document.getElementById("currentPeriod");
         if (periodNumber > 0) {
-            currentPeriodEl.className = "badge bg-success" + (periodNumber > 0 ? " badge-lg" : "");
+            currentPeriodEl.className = "badge bg-success";
         } else {
             currentPeriodEl.className = "badge bg-secondary";
         }
-    }
-    
-    // Update the period time range display
-    const periodTimeRangeEl = document.getElementById("periodTimeRange");
-    if (periodTimeRangeEl) {
+        currentPeriodEl.textContent = period;
+
+        const periodTimeRangeEl = document.getElementById("periodTimeRange");
         if (periodNumber > 0) {
             periodTimeRangeEl.textContent = `${currentPeriodStartTime} - ${currentPeriodEndTime}`;
-            periodTimeRangeEl.style.display = "block";
             periodTimeRangeEl.classList.add('text-success');
             periodTimeRangeEl.classList.remove('text-secondary');
         } else {
-            // Display the next period's start time if we're not in a period
-            let nextPeriodIndex = -1;
-            let nextPeriodStartTime = '';
-            
-            // Find the next period
+            const current = new Date();
+            current.setHours(hour, minute, second);
+            let nextPeriodIndex = -1, nextPeriodStartTime = '';
             for (let i = 0; i < schedule.length; i++) {
-                const [sh, sm, eh, em] = schedule[i];
+                const [sh, sm] = schedule[i];
                 const start = new Date(); start.setHours(sh, sm, 0);
-                const current = new Date(); current.setHours(hour, minute, second);
-                
                 if (current < start) {
                     nextPeriodIndex = i;
                     nextPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
                     break;
                 }
             }
-            
             if (nextPeriodIndex !== -1) {
                 periodTimeRangeEl.textContent = `다음 ${nextPeriodIndex + 1}교시: ${nextPeriodStartTime}부터`;
             } else {
                 periodTimeRangeEl.textContent = "모든 교시가 종료되었습니다";
             }
-            
-            periodTimeRangeEl.style.display = "block";
             periodTimeRangeEl.classList.add('text-secondary');
             periodTimeRangeEl.classList.remove('text-success');
         }
-    }
-    
-    // Update the submit button
-    const submitBtn = document.getElementById("submitBtn");
-    if (submitBtn) {
-        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
-    }
-}
 
-// 고정된 시간 표시는 script.js 파일에서 전역적으로 처리합니다
+        document.getElementById("submitBtn").innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
+    }
 
-// Form validation
-document.addEventListener('DOMContentLoaded', function() {
-    // Update time and period initially and then every second
+    setInterval(updateTimeAndPeriod, 1000);
     updateTimeAndPeriod();
-    updateFixedTimeDisplay();
-    
-    setInterval(function() {
-        updateTimeAndPeriod();
-        updateFixedTimeDisplay();
-    }, 1000);
-    
-    const forms = document.querySelectorAll('.needs-validation');
-    
-    Array.prototype.slice.call(forms).forEach(function(form) {
-        form.addEventListener('submit', function(event) {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-        }, false);
-    });
 });
 </script>
 {% endblock %}
