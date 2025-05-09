@@ -523,10 +523,12 @@ def lookup_name():
     if student_info:
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
+        already_attended = check_attendance(student_id)
         return jsonify({
             'success': True, 
             'name': name, 
-            'seat': seat
+            'seat': seat,
+            'already_attended': already_attended
         })
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
