@@ -252,6 +252,10 @@ def attendance():
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
     """Admin login page"""
+    # 이미 로그인 되어 있으면 교시별 출석현황 페이지로 바로 리다이렉트
+    if session.get('admin'):
+        return redirect('/by_period')
+        
     if request.method == 'POST':
         password = request.form.get('password')
         if password == ADMIN_PASSWORD:
