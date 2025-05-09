@@ -223,8 +223,8 @@ def check_attendance(student_id, admin_override=False):
                         if weekly_attendance_count >= 1 and not session.get('admin'):
                             return True, last_attendance_date
                         
-                        # 일주일에 두 번 이상 출석했고, 관리자 로그인인 경우
-                        if weekly_attendance_count >= 2 and session.get('admin'):
+                        # 일주일에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
+                        if weekly_attendance_count >= 2:
                             return True, last_attendance_date
                             
                 except ValueError:
@@ -340,7 +340,14 @@ def attendance():
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
             flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
         elif check_attendance(student_id)[0]:
-            flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
+            # 관리자 로그인 상태면 중복 출석 허용 메시지 표시
+            if session.get('admin'):
+                flash("⚠️ 이번 주에 이미 출석했지만, 관리자 권한으로 추가 출석을 허용합니다.", "warning")
+                seat = student_info[1]
+                if save_attendance(student_id, name, seat):
+                    flash(f"✅ 출석이 완료되었습니다. 공강좌석번호: {seat}", "success")
+            else:
+                flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
         else:
             seat = student_info[1]
             if save_attendance(student_id, name, seat):
