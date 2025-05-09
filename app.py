@@ -54,13 +54,71 @@ def initialize_files():
             except Exception as e:
                 logging.error(f"Error creating file {file}: {e}")
     
-    # Excel용 파일은 UTF-8-SIG(BOM 포함)로 저장
-    if not os.path.exists(EXCEL_FRIENDLY_FILE):
+    # 기본 파일이 있고 Excel 호환 파일이 없으면 Excel 호환 파일 생성
+    if os.path.exists(FILENAME) and not os.path.exists(EXCEL_FRIENDLY_FILE):
         try:
+            # 기존 기록 읽기
+            with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                all_records = list(reader)
+                
+            # Excel용 파일 생성 (UTF-8-SIG/BOM 포함)
+            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
+                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(all_records)
+            logging.info(f"Created Excel-friendly file with {len(all_records)} records: {EXCEL_FRIENDLY_FILE}")
+        except Exception as e:
+            logging.error(f"Error creating Excel-friendly file from existing records {EXCEL_FRIENDLY_FILE}: {e}")
+    # Excel 파일이 있는데 기본 파일이 없으면 기본 파일 생성
+    elif not os.path.exists(FILENAME) and os.path.exists(EXCEL_FRIENDLY_FILE):
+        try:
+            # 엑셀 파일 읽기
+            with open(EXCEL_FRIENDLY_FILE, 'r', newline='', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                all_records = list(reader)
+                
+            # 기본 파일 생성
+            with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
+                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(all_records)
+            logging.info(f"Created main attendance file from Excel file with {len(all_records)} records: {FILENAME}")
+        except Exception as e:
+            logging.error(f"Error creating main file from Excel records {FILENAME}: {e}")
+    # 둘 다 있으면 일관성 체크 및 동기화
+    elif os.path.exists(FILENAME) and os.path.exists(EXCEL_FRIENDLY_FILE):
+        try:
+            # 두 파일 모두 읽기
+            with open(FILENAME, 'r', newline='', encoding='utf-8') as f1:
+                reader1 = csv.DictReader(f1)
+                main_records = list(reader1)
+                
+            with open(EXCEL_FRIENDLY_FILE, 'r', newline='', encoding='utf-8-sig') as f2:
+                reader2 = csv.DictReader(f2)
+                excel_records = list(reader2)
+                
+            # 레코드 수가 다르면 기본 파일 기준으로 Excel 파일 업데이트
+            if len(main_records) != len(excel_records):
+                logging.warning(f"Record count mismatch: main={len(main_records)}, excel={len(excel_records)}. Syncing...")
+                with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
+                    fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(main_records)
+                logging.info(f"Updated Excel-friendly file with {len(main_records)} records")
+        except Exception as e:
+            logging.error(f"Error checking file consistency: {e}")
+    # 둘 다 없으면 빈 파일 생성
+    else:
+        try:
+            # Excel용 파일 생성 (UTF-8-SIG/BOM 포함)
             with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
                 writer.writerow(['출석일', '교시', '학번', '이름', '공강좌석번호'])
-            logging.info(f"Created Excel-friendly file: {EXCEL_FRIENDLY_FILE}")
+            logging.info(f"Created empty Excel-friendly file: {EXCEL_FRIENDLY_FILE}")
         except Exception as e:
             logging.error(f"Error creating Excel-friendly file {EXCEL_FRIENDLY_FILE}: {e}")
             
@@ -630,7 +688,8 @@ def delete_records():
             reader = csv.DictReader(f)
             all_records = list(reader)
             
-        # 백업 파일 생성
+        # 백업 파일 생성 (로깅 추가)
+        logging.info(f"Backing up {len(all_records)} records to {BACKUP_FILE} before deletion")
         with open(BACKUP_FILE, 'w', newline='', encoding='utf-8') as f:
             fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -648,6 +707,7 @@ def delete_records():
             if student_id and date:
                 # 학번과 날짜로 식별
                 records_set.add((date, student_id, period))
+                logging.info(f"Marking for deletion: 학번={student_id}, 날짜={date}, 교시={period}")
             
         # 삭제되지 않을 기록만 필터링
         filtered_records = []
@@ -656,21 +716,40 @@ def delete_records():
             if key not in records_set:
                 filtered_records.append(record)
         
-        # 필터링된 기록 저장
+        # 필터링된 기록 저장 (기존 파일 삭제 후 저장)
+        logging.info(f"Saving {len(filtered_records)} records after deletion (removed {len(all_records) - len(filtered_records)} records)")
+        
+        # 기존 파일 삭제 후 새로 생성 (기록 충돌 방지)
+        if os.path.exists(FILENAME):
+            os.remove(FILENAME)
+            
         with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
             fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(filtered_records)
         
-        # Excel 호환 파일도 업데이트
+        # Excel 호환 파일도 업데이트 (기존 파일 삭제 후 새로 생성)
+        if os.path.exists(EXCEL_FRIENDLY_FILE):
+            os.remove(EXCEL_FRIENDLY_FILE)
+            
         with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
             fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(filtered_records)
+        
+        # 파일이 제대로 저장되었는지 확인
+        with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            check_records = list(reader)
+        
+        if len(check_records) != len(filtered_records):
+            logging.error(f"Record count mismatch after deletion: expected {len(filtered_records)}, got {len(check_records)}")
+            return jsonify({'success': False, 'error': '삭제 후 기록 수가 일치하지 않습니다.'}), 500
             
         deleted_count = len(all_records) - len(filtered_records)
+        logging.info(f"Successfully deleted {deleted_count} records")
         return jsonify({
             'success': True, 
             'message': f'{deleted_count}개의 기록이 삭제되었습니다.',
