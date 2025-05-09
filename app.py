@@ -521,7 +521,13 @@ def lookup_name():
     student_info = student_data.get(student_id)
 
     if student_info:
-        return jsonify({'success': True, 'name': student_info[0]})
+        name = student_info[0]
+        seat = student_info[1] if len(student_info) > 1 else None
+        return jsonify({
+            'success': True, 
+            'name': name, 
+            'seat': seat
+        })
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
 
