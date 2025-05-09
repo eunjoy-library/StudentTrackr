@@ -223,6 +223,12 @@ def save_attendance(student_id, name, seat):
         flash(f"⚠️ 오류가 발생했습니다: {str(e)}", "danger")
         return False
 
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon.ico"""
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 @app.route('/', methods=['GET', 'POST'])
 def attendance():
     """Main attendance page and form submission handler"""
