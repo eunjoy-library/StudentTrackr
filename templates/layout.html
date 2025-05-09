@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}도서실 출석 시스템{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- 파비콘 설정 -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}?v=2">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}?v=2">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=2">
     <!-- Bootstrap CSS (Replit-themed) -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <!-- Font Awesome icons -->
