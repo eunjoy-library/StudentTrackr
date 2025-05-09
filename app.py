@@ -340,9 +340,9 @@ def attendance():
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
             flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
         elif check_attendance(student_id)[0]:
-            # 관리자 로그인 상태면 중복 출석 허용 메시지 표시
+            # 관리자 로그인 상태면 중복 출석 허용하고 일반 메시지 표시 (몰래)
             if session.get('admin'):
-                flash("⚠️ 이번 주에 이미 출석했지만, 관리자 권한으로 추가 출석을 허용합니다.", "warning")
+                # 관리자용 알림은 세션에만 저장하고 화면에는 표시하지 않음
                 seat = student_info[1]
                 if save_attendance(student_id, name, seat):
                     flash(f"✅ 출석이 완료되었습니다. 공강좌석번호: {seat}", "success")
