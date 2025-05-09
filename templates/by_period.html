@@ -185,12 +185,68 @@
         border-radius: 0.5rem;
         color: #6c757d;
     }
+    
+    /* 메모 아이콘 스타일 */
+    .memo-button {
+        transition: all 0.2s;
+    }
+    
+    .memo-button:hover {
+        transform: scale(1.1);
+    }
+    
+    .memo-button.has-memo {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* 메모 표시 스타일 */
+    .period-memo {
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background-color: rgba(255, 255, 255, 0.15);
+        border-radius: 0.25rem;
+        font-style: italic;
+        color: #495057;
+        display: flex;
+        align-items: flex-start;
+    }
+    
+    .period-memo i {
+        margin-right: 0.5rem;
+        margin-top: 0.25rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- 복사 완료 알림을 위한 토스트 -->
 <div class="copy-toast" id="copyToast">복사되었습니다!</div>
+
+<!-- 메모 모달 -->
+<div class="modal fade" id="memoModal" tabindex="-1" aria-labelledby="memoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="memoModalLabel">교시별 메모</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="memoForm">
+          <input type="hidden" id="memoDate" name="date">
+          <input type="hidden" id="memoPeriod" name="period">
+          <div class="mb-3">
+            <label for="memoText" class="form-label">메모</label>
+            <textarea class="form-control" id="memoText" name="memo" rows="5" placeholder="이 교시에 대한 메모를 입력하세요..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" id="saveMemoBtn">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="container">
     <div class="card shadow mb-4">
@@ -228,6 +284,14 @@
                                            data-period="{{ period }}"
                                            title="전체 선택/해제">
                                 </div>
+                                <button class="btn btn-sm btn-outline-light ms-2 memo-button" 
+                                        data-period="{{ period }}"
+                                        data-date="{{ period_groups[period]['날짜'] }}" 
+                                        data-period-text="{{ period_groups[period]['교시'] }}"
+                                        data-memo="{{ period_groups[period]['메모'] }}"
+                                        title="교시 메모">
+                                    <i class="fas fa-sticky-note"></i>
+                                </button>
                             </div>
                             <div class="d-flex align-items-center">
                                 <span class="period-count me-2">{{ period_groups[period]['학생_목록']|length }}명</span>

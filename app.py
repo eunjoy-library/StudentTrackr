@@ -28,6 +28,7 @@ BACKUP_FILE = 'attendance_backup.csv'
 LOG_FILE = 'attendance_error.log'
 EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
 STUDENT_FILE = 'students.xlsx'
+MEMO_FILE = 'period_memos.csv'
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")  # Default is "1234" if not set in environment
 
 # Period schedule configuration
@@ -62,6 +63,83 @@ def initialize_files():
             logging.info(f"Created Excel-friendly file: {EXCEL_FRIENDLY_FILE}")
         except Exception as e:
             logging.error(f"Error creating Excel-friendly file {EXCEL_FRIENDLY_FILE}: {e}")
+            
+    # 교시별 메모 파일 초기화
+    if not os.path.exists(MEMO_FILE):
+        try:
+            with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['날짜', '교시', '메모'])
+            logging.info(f"Created memo file: {MEMO_FILE}")
+        except Exception as e:
+            logging.error(f"Error creating memo file {MEMO_FILE}: {e}")
+
+# 교시별 메모 저장 함수
+def save_period_memo(date, period, memo_text):
+    """
+    교시별 메모를 저장하는 함수
+    """
+    file_exists = os.path.exists(MEMO_FILE)
+    fieldnames = ['날짜', '교시', '메모']
+    
+    # 이미 존재하는 같은 날짜/교시의 메모가 있는지 확인
+    existing_memos = load_period_memos()
+    updated = False
+    
+    # 파일이 이미 있는 경우, 기존 메모를 업데이트하고 새 파일로 저장
+    if file_exists:
+        with open(MEMO_FILE, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            
+        for row in rows:
+            if row['날짜'] == date and row['교시'] == period:
+                row['메모'] = memo_text
+                updated = True
+                break
+                
+        if not updated:
+            rows.append({'날짜': date, '교시': period, '메모': memo_text})
+            
+        # 메모 파일 덮어쓰기
+        with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+    else:
+        # 파일이 없는 경우, 새로 생성하고 메모 추가
+        with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow({'날짜': date, '교시': period, '메모': memo_text})
+    
+    return True
+
+# 모든 교시별 메모 로드 함수
+def load_period_memos():
+    """
+    모든 교시별 메모를 로드하는 함수
+    """
+    if not os.path.exists(MEMO_FILE):
+        return []
+        
+    try:
+        with open(MEMO_FILE, newline='', encoding='utf-8') as f:
+            return list(csv.DictReader(f))
+    except Exception as e:
+        logging.error(f"메모 파일 로드 중 오류 발생: {e}")
+        return []
+
+# 특정 교시의 메모 조회 함수
+def get_period_memo(date, period):
+    """
+    특정 날짜와 교시에 해당하는 메모를 반환하는 함수
+    """
+    memos = load_period_memos()
+    for memo in memos:
+        if memo['날짜'] == date and memo['교시'] == period:
+            return memo['메모']
+    return ""
 
 initialize_files()
 
@@ -92,12 +170,18 @@ def load_student_data():
         flash(f"학생 정보를 불러올 수 없습니다. 관리자에게 문의하세요: {e}", "danger")
         return {}
 
-def check_attendance(student_id):
+def check_attendance(student_id, admin_override=False):
     """
     Check if the student has already attended this week
     Returns (True, last_attendance_date) if already attended, (False, None) otherwise
+    
+    admin_override: 관리자 수동 추가 시 체크를 건너뛰는 옵션
     """
-    # Skip check for students with ID starting with '3'
+    # 관리자 수동 추가인 경우 체크 건너뛰기
+    if admin_override:
+        return False, None
+        
+    # '3'으로 시작하는 학번은 항상 출석 가능
     if student_id.startswith('3'):
         return False, None
         
@@ -106,6 +190,7 @@ def check_attendance(student_id):
         
     last_attendance_date = None
     latest_attendance_datetime = None
+    weekly_attendance_count = 0
     
     with open(FILENAME, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
@@ -130,9 +215,18 @@ def check_attendance(student_id):
                         latest_attendance_datetime = attend_time
                         last_attendance_date = date_part
                         
-                    # 일주일 이내 출석 확인
+                    # 일주일 이내 출석 횟수 카운트
                     if attend_time >= one_week_ago:
-                        return True, last_attendance_date
+                        weekly_attendance_count += 1
+                        
+                        # 일주일에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
+                        if weekly_attendance_count >= 1 and not session.get('admin'):
+                            return True, last_attendance_date
+                        
+                        # 일주일에 두 번 이상 출석했고, 관리자 로그인인 경우
+                        if weekly_attendance_count >= 2 and session.get('admin'):
+                            return True, last_attendance_date
+                            
                 except ValueError:
                     continue
                     
@@ -397,6 +491,7 @@ def by_period():
         return redirect('/admin')
         
     records = load_attendance()
+    memos = load_period_memos()  # 모든 메모 로드
     
     # 교시별로만 학생 데이터 그룹화 (날짜는 개별 학생 카드에만 표시)
     period_groups = {}
@@ -420,17 +515,22 @@ def by_period():
                 date_md = f"{date_obj.month}월{date_obj.day}일"
                 # 원래 날짜도 저장 (정렬용)
                 original_date = date_obj
+                # 메모 검색을 위한 원본 날짜 문자열
+                original_date_str = date
             except ValueError:
                 date_md = date
                 original_date = datetime(1900, 1, 1)  # 날짜 변환 실패시 고정 날짜로
+                original_date_str = date
         else:
             date_md = date
             original_date = datetime(1900, 1, 1)  # 날짜 없음은 고정 날짜로
+            original_date_str = date
         
         # 원본 기록에 날짜 정보 추가
         record_copy = record.copy()
         record_copy['날짜_md'] = date_md
         record_copy['원본_날짜'] = original_date  # 정렬용 원본 날짜 저장
+        record_copy['원본_날짜_문자열'] = original_date_str  # 메모 검색용 원본 날짜 문자열
         
         # 날짜와 교시를 조합하여 키 생성 (예: "5월7일 6교시")
         period_num = int(period[0]) if period and period[0].isdigit() else 999
@@ -439,9 +539,19 @@ def by_period():
         new_period_key = f"{date_md} {period}"
         
         if new_period_key not in period_groups:
+            # 이 교시에 대한 메모 찾기
+            memo_text = ""
+            for memo in memos:
+                if memo['날짜'] == original_date_str and memo['교시'] == period:
+                    memo_text = memo['메모']
+                    break
+                    
             period_groups[new_period_key] = {
                 '학생_목록': [],
-                '교시_번호': period_num
+                '교시_번호': period_num,
+                '메모': memo_text,
+                '날짜': original_date_str,
+                '교시': period
             }
         
         period_groups[new_period_key]['학생_목록'].append(record_copy)
@@ -466,6 +576,31 @@ def by_period():
         )
     
     return render_template('by_period.html', period_groups=period_groups, sorted_periods=sorted_periods)
+    
+@app.route('/save_memo', methods=['POST'])
+def save_memo():
+    """교시별 메모 저장 API"""
+    if not session.get('admin'):
+        return jsonify({'success': False, 'error': '관리자 권한이 필요합니다.'}), 403
+        
+    try:
+        data = request.get_json()
+        date = data.get('date')
+        period = data.get('period')
+        memo_text = data.get('memo', '')
+        
+        if not date or not period:
+            return jsonify({'success': False, 'error': '날짜와 교시 정보가 필요합니다.'}), 400
+            
+        # 메모 저장
+        if save_period_memo(date, period, memo_text):
+            return jsonify({'success': True, 'message': '메모가 저장되었습니다.'})
+        else:
+            return jsonify({'success': False, 'error': '메모 저장 중 오류가 발생했습니다.'}), 500
+            
+    except Exception as e:
+        logging.error(f"메모 저장 중 오류 발생: {e}")
+        return jsonify({'success': False, 'error': f'오류: {str(e)}'}), 500
 
 @app.route('/delete_records', methods=['POST'])
 def delete_records():
