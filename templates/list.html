@@ -319,7 +319,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // 삭제 확인 버튼 클릭 시
     confirmDeleteBtn.addEventListener('click', function() {
         const checkedBoxes = document.querySelectorAll('.record-check:checked');
-        const recordsToDelete = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+        // 새로운 형식으로 삭제할 데이터 생성 - 학번, 날짜, 교시 객체 배열로 변환
+        const recordsToDelete = Array.from(checkedBoxes).map(checkbox => {
+            const value = checkbox.value;
+            const parts = value.split(',');
+            return {
+                date: parts[0],
+                period: parts[1],
+                student_id: parts[2]
+            };
+        });
         
         // AJAX 요청으로 데이터 삭제
         fetch('/delete_records', {
