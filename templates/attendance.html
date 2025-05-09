@@ -136,8 +136,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     if (alreadyAttended) {
                         // 이미 출석한 경우
+                        const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
                         document.getElementById('studentInfoText').innerHTML = `
-                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">이미 이번주에 출석하였습니다.</div>
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                이미 이번주에 출석하였습니다.
+                                ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
+                            </div>
                             ${modalContent}
                         `;
                         

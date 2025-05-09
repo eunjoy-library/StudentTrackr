@@ -95,15 +95,18 @@ def load_student_data():
 def check_attendance(student_id):
     """
     Check if the student has already attended this week
-    Returns True if already attended, False otherwise
+    Returns (True, last_attendance_date) if already attended, (False, None) otherwise
     """
     # Skip check for students with ID starting with '3'
     if student_id.startswith('3'):
-        return False
+        return False, None
         
     if not os.path.exists(FILENAME):
-        return False
+        return False, None
         
+    last_attendance_date = None
+    latest_attendance_datetime = None
+    
     with open(FILENAME, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         # 한국 시간 기준으로 일주일 전 계산
@@ -114,14 +117,30 @@ def check_attendance(student_id):
                     # 날짜에 시간 정보 포함 여부 확인 및 처리
                     attendance_date = r['출석일']
                     if ' ' in attendance_date:
-                        attendance_date = attendance_date.split(' ')[0]  # 날짜 부분만 추출
+                        # 날짜와 시간 부분을 분리
+                        date_part = attendance_date.split(' ')[0]  # 날짜 부분만 추출
+                    else:
+                        date_part = attendance_date
+                        
                     # 날짜만 파싱
-                    attend_time = datetime.strptime(attendance_date, '%Y-%m-%d')
+                    attend_time = datetime.strptime(date_part, '%Y-%m-%d')
+                    
+                    # 가장 최근 출석 날짜 업데이트
+                    if latest_attendance_datetime is None or attend_time > latest_attendance_datetime:
+                        latest_attendance_datetime = attend_time
+                        last_attendance_date = date_part
+                        
+                    # 일주일 이내 출석 확인
+                    if attend_time >= one_week_ago:
+                        return True, last_attendance_date
                 except ValueError:
                     continue
-                if attend_time >= one_week_ago:
-                    return True
-        return False
+                    
+        # 일주일 이내 출석은 없지만, 과거 출석 기록이 있는 경우
+        if last_attendance_date:
+            return False, last_attendance_date
+            
+        return False, None
 
 def load_attendance():
     """
@@ -220,7 +239,7 @@ def attendance():
             flash("❌ 학번이 올바르지 않습니다. 다시 확인해주세요.", "danger")
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
             flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
-        elif check_attendance(student_id):
+        elif check_attendance(student_id)[0]:
             flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
         else:
             seat = student_info[1]
@@ -523,12 +542,23 @@ def lookup_name():
     if student_info:
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
-        already_attended = check_attendance(student_id)
+        already_attended, last_attendance_date = check_attendance(student_id)
+        
+        # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
+        formatted_date = None
+        if last_attendance_date:
+            try:
+                date_obj = datetime.strptime(last_attendance_date, '%Y-%m-%d')
+                formatted_date = date_obj.strftime('%Y년 %m월 %d일')
+            except:
+                formatted_date = last_attendance_date
+        
         return jsonify({
             'success': True, 
             'name': name, 
             'seat': seat,
-            'already_attended': already_attended
+            'already_attended': already_attended,
+            'last_attendance_date': formatted_date
         })
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
