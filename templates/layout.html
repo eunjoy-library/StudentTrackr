@@ -135,6 +135,11 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/admin_add_attendance' %}active{% endif %}" href="/admin_add_attendance">
+                                    <i class="fas fa-plus-circle"></i> 추가 출석하기
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="/logout">
                                     <i class="fas fa-sign-out-alt"></i> 로그아웃
                                 </a>

@@ -340,12 +340,10 @@ def attendance():
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
             flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
         elif check_attendance(student_id)[0]:
-            # 관리자 로그인 상태면 중복 출석 허용하고 일반 메시지 표시 (몰래)
+            # 메인 출석 페이지에서는 관리자 여부와 관계없이 중복 출석을 금지
+            # 관리자는 별도의 추가 출석 페이지를 통해서만 추가 출석 처리 가능
             if session.get('admin'):
-                # 관리자용 알림은 세션에만 저장하고 화면에는 표시하지 않음
-                seat = student_info[1]
-                if save_attendance(student_id, name, seat):
-                    flash(f"✅ 출석이 완료되었습니다. 공강좌석번호: {seat}", "success")
+                flash("⚠️ 이번 주에 이미 출석했습니다. 추가 출석은 관리자 메뉴의 '추가 출석하기'에서 진행해주세요.", "warning")
             else:
                 flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
         else:
@@ -678,6 +676,96 @@ def delete_records():
     except Exception as e:
         logging.error(f"Error deleting records: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin_add_attendance', methods=['GET', 'POST'])
+def admin_add_attendance():
+    """관리자용 추가 출석 페이지"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    student_info = None
+    attended = False
+    last_attendance_date = None
+    override = False
+    
+    if request.method == 'POST':
+        student_id = request.form.get('student_id', '').strip()
+        override = 'override_check' in request.form
+        
+        if student_id:
+            # 학생 데이터 로드
+            student_data = load_student_data()
+            student = student_data.get(student_id)
+            
+            if student:
+                # 출석 여부 확인
+                already_attended, attendance_date = check_attendance(student_id)
+                
+                student_info = {
+                    'id': student_id,
+                    'name': student[0],
+                    'seat': student[1]
+                }
+                
+                attended = already_attended
+                last_attendance_date = attendance_date
+            else:
+                flash("❌ 입력한 학번을 찾을 수 없습니다.", "danger")
+        else:
+            flash("❌ 학번을 입력해주세요.", "danger")
+    
+    return render_template(
+        'admin_add_attendance.html', 
+        student_info=student_info, 
+        attended=attended, 
+        last_attendance_date=last_attendance_date,
+        override=override
+    )
+
+@app.route('/admin_add_attendance/confirm', methods=['POST'])
+def admin_add_attendance_confirm():
+    """관리자용 추가 출석 확인 처리"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    student_id = request.form.get('student_id', '').strip()
+    name = request.form.get('name', '').strip()
+    seat = request.form.get('seat', '').strip()
+    override = request.form.get('override') == '1'
+    
+    # 학생 데이터 로드 및 검증
+    student_data = load_student_data()
+    student = student_data.get(student_id)
+    
+    if not student:
+        flash("❌ 입력한 학번을 찾을 수 없습니다.", "danger")
+        return redirect('/admin_add_attendance')
+        
+    if student[0].replace(' ', '') != name.replace(' ', ''):
+        flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
+        return redirect('/admin_add_attendance')
+    
+    # 출석 여부 확인
+    already_attended, last_attendance_date = check_attendance(student_id)
+    
+    # 이미 출석했고 override 체크가 안 되어 있으면 중복 출석 방지
+    if already_attended and not override:
+        flash("⚠️ 이 학생은 이번 주에 이미 출석했습니다. 중복 출석을 허용하려면 '중복 출석 허용' 체크박스를 선택해주세요.", "warning")
+        return redirect('/admin_add_attendance')
+    
+    # 출석 저장
+    if save_attendance(student_id, name, seat):
+        # 중복 출석인 경우 추가 메시지
+        if already_attended:
+            flash(f"✅ 관리자 권한으로 추가 출석이 완료되었습니다. 학번: {student_id}, 이름: {name}", "success")
+        else:
+            flash(f"✅ 출석이 완료되었습니다. 학번: {student_id}, 이름: {name}", "success")
+    else:
+        flash("❌ 출석 저장 중 오류가 발생했습니다.", "danger")
+    
+    return redirect('/admin_add_attendance')
 
 @app.route('/logout')
 def logout():

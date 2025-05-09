@@ -135,42 +135,26 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>`;
                     
                     if (alreadyAttended) {
-                        // 이미 출석한 경우
+                        // 이미 출석한 경우 (관리자도 일반 출석 페이지에서는 추가 출석 허용 안함)
                         const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
                         const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
                         
-                        if (isAdmin) {
-                            document.getElementById('studentInfoText').innerHTML = `
-                                <div style="color: #fd7e14; font-weight: bold; margin-bottom: 15px;">
-                                    이미 이번주에 출석하였습니다.
-                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                                    <div style="font-size: 16px; margin-top: 10px; color: #20c997;">
-                                        관리자 권한으로 추가 출석을 허용합니다.
-                                    </div>
-                                </div>
-                                ${modalContent}
-                            `;
-                            
-                            // 관리자인 경우 확인 버튼 활성화
-                            confirmBtn.disabled = false;
-                            confirmBtn.classList.add('btn-warning');
-                            confirmBtn.classList.remove('btn-primary');
-                            confirmBtn.classList.remove('btn-secondary');
-                        } else {
-                            document.getElementById('studentInfoText').innerHTML = `
-                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                    이미 이번주에 출석하였습니다.
-                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                                </div>
-                                ${modalContent}
-                            `;
-                            
-                            // 일반 사용자인 경우 확인 버튼 비활성화
-                            confirmBtn.disabled = true;
-                            confirmBtn.classList.add('btn-secondary');
-                            confirmBtn.classList.remove('btn-primary');
-                            confirmBtn.classList.remove('btn-warning');
-                        }
+                        document.getElementById('studentInfoText').innerHTML = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                이미 이번주에 출석하였습니다.
+                                ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
+                                ${isAdmin ? `<div style="font-size: 16px; margin-top: 10px; color: #0d6efd;">
+                                    추가 출석이 필요한 경우 관리자 메뉴의 '추가 출석하기'를 이용해주세요.
+                                </div>` : ''}
+                            </div>
+                            ${modalContent}
+                        `;
+                        
+                        // 확인 버튼 비활성화 (관리자도 마찬가지)
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.add('btn-secondary');
+                        confirmBtn.classList.remove('btn-primary');
+                        confirmBtn.classList.remove('btn-warning');
                     } else {
                         // 처음 출석하는 경우
                         document.getElementById('studentInfoText').innerHTML = `

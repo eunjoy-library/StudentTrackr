@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block title %}관리자 추가 출석{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="m-0">관리자 추가 출석</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="student_id" class="form-label">학번:</label>
+                            <input type="text" class="form-control" id="student_id" name="student_id" 
+                                   placeholder="학번 입력" required autocomplete="off">
+                            <div class="invalid-feedback">
+                                학번을 입력해주세요.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="override_check" name="override_check">
+                                <label class="form-check-label" for="override_check">
+                                    <span class="text-warning">중복 출석 허용 (주의: 일주일에 한번만 출석 규칙 무시)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">학생 정보 확인</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="d-grid gap-2">
+                <a href="/by_period" class="btn btn-secondary">교시별 출석 목록으로 돌아가기</a>
+            </div>
+        </div>
+        <div class="col-md-8">
+            {% if student_info %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="m-0">학생 정보</h4>
+                </div>
+                <div class="card-body">
+                    <div class="p-3 border rounded mb-3">
+                        <h5>기본 정보</h5>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-2">
+                                <strong>학번:</strong> {{ student_info.id }}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <strong>이름:</strong> {{ student_info.name }}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <strong>공강실 좌석번호:</strong> {{ student_info.seat }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if attended %}
+                    <div class="alert alert-warning">
+                        <strong>⚠️ 알림:</strong> 이 학생은 이번주에 이미 출석했습니다 (최근 출석일: {{ last_attendance_date }})
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" action="/admin_add_attendance/confirm">
+                        <input type="hidden" name="student_id" value="{{ student_info.id }}">
+                        <input type="hidden" name="name" value="{{ student_info.name }}">
+                        <input type="hidden" name="seat" value="{{ student_info.seat }}">
+                        <input type="hidden" name="override" value="{{ '1' if override else '0' }}">
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>
+                                출석 추가하기
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
