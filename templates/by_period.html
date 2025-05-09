@@ -660,6 +660,86 @@ document.addEventListener('DOMContentLoaded', function() {
             // 부분 선택 상태 표시 (미래에 구현 가능)
         });
     });
+    
+    // 개별 학생 삭제 버튼 이벤트 핸들러
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const studentId = this.dataset.id;
+            const date = this.dataset.date;
+            const period = this.dataset.period;
+            
+            if (confirm(`정말로 이 학생의 출석 기록을 삭제하시겠습니까?\n학번: ${studentId}`)) {
+                deleteAttendanceRecord([{
+                    student_id: studentId,
+                    date: date,
+                    period: period
+                }]);
+            }
+        });
+    });
+    
+    // 체크된 학생 일괄 삭제 버튼 이벤트 핸들러
+    document.querySelectorAll('.delete-checked-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const period = this.dataset.period;
+            const periodId = createPeriodId(period);
+            const studentList = document.getElementById(`student-list-${periodId}`);
+            
+            if (!studentList) return;
+            
+            // 체크된 카드만 선택
+            const studentCards = Array.from(studentList.querySelectorAll('.student-card'));
+            const checkedCards = studentCards.filter(card => {
+                const checkBox = card.querySelector('.student-check');
+                return checkBox && checkBox.checked;
+            });
+            
+            if (checkedCards.length === 0) {
+                alert('삭제할 학생을 선택해주세요.');
+                return;
+            }
+            
+            if (confirm(`선택한 ${checkedCards.length}명의 학생 출석 기록을 삭제하시겠습니까?`)) {
+                const records = checkedCards.map(card => {
+                    const deleteBtn = card.querySelector('.delete-btn');
+                    return {
+                        student_id: deleteBtn.dataset.id,
+                        date: deleteBtn.dataset.date,
+                        period: deleteBtn.dataset.period
+                    };
+                });
+                
+                deleteAttendanceRecord(records);
+            }
+        });
+    });
+    
+    // 출석 기록 삭제 함수
+    function deleteAttendanceRecord(records) {
+        fetch('/delete_records', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                records: records
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 삭제 성공 시 페이지 새로고침
+                alert(`${data.deleted_count}개의 출석 기록이 삭제되었습니다.`);
+                location.reload();
+            } else {
+                alert('출석 기록 삭제에 실패했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('출석 기록 삭제 중 오류 발생:', error);
+            alert('출석 기록 삭제 중 오류가 발생했습니다.');
+        });
+    }
 });
 </script>
 {% endblock %}

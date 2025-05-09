@@ -637,18 +637,22 @@ def delete_records():
             writer.writeheader()
             writer.writerows(all_records)
         
-        # 삭제할 기록들을 파싱
+        # 삭제할 기록들을 파싱 (새로운 JSON 형식으로)
         records_set = set()
-        for record_str in records_to_delete:
-            parts = record_str.split(',')
-            if len(parts) >= 5:  # 출석일, 교시, 학번, 이름, 좌석번호
-                # 출석일과 학번, 이름으로 식별 (고유 키로 사용)
-                records_set.add((parts[0], parts[2], parts[3]))
-        
+        for record in records_to_delete:
+            # 새로운 JSON 형식 - 학번, 날짜, 교시 정보를 가지고 있음
+            student_id = record.get('student_id')
+            date = record.get('date')
+            period = record.get('period')
+            
+            if student_id and date:
+                # 학번과 날짜로 식별
+                records_set.add((date, student_id, period))
+            
         # 삭제되지 않을 기록만 필터링
         filtered_records = []
         for record in all_records:
-            key = (record['출석일'], record['학번'], record['이름'])
+            key = (record['출석일'], record['학번'], record['교시'])
             if key not in records_set:
                 filtered_records.append(record)
         
