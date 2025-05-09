@@ -202,19 +202,41 @@
     /* 메모 표시 스타일 */
     .period-memo {
         margin-top: 0.5rem;
+        margin-bottom: 1rem;
         padding: 0.75rem;
-        background-color: rgba(255, 255, 255, 0.15);
+        background-color: #fff;
         border-radius: 0.25rem;
         font-style: italic;
         color: #495057;
         display: flex;
         align-items: flex-start;
+        border-left: 4px solid #0d6efd;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .period-memo i {
         margin-right: 0.5rem;
         margin-top: 0.25rem;
+        color: #0d6efd;
     }
+    
+    .period-1 .period-memo { border-left-color: #007bff; }
+    .period-1 .period-memo i { color: #007bff; }
+    
+    .period-2 .period-memo { border-left-color: #6f42c1; }
+    .period-2 .period-memo i { color: #6f42c1; }
+    
+    .period-3 .period-memo { border-left-color: #fd7e14; }
+    .period-3 .period-memo i { color: #fd7e14; }
+    
+    .period-4 .period-memo { border-left-color: #e83e8c; }
+    .period-4 .period-memo i { color: #e83e8c; }
+    
+    .period-5 .period-memo { border-left-color: #20c997; }
+    .period-5 .period-memo i { color: #20c997; }
+    
+    .period-6 .period-memo { border-left-color: #dc3545; }
+    .period-6 .period-memo i { color: #dc3545; }
 </style>
 {% endblock %}
 
@@ -301,6 +323,12 @@
                             </div>
                         </div>
                         <div class="period-content">
+                            {% if period_groups[period]['메모'] %}
+                            <div class="period-memo">
+                                <i class="fas fa-sticky-note"></i>
+                                {{ period_groups[period]['메모'] }}
+                            </div>
+                            {% endif %}
                             {% if period_groups[period]['학생_목록'] %}
                                 <div class="sorting-controls" id="sort-controls-{{ period|replace(' ', '-')|replace('교시', '')|replace('월', '-')|replace('일', '') }}">
                                     <span class="sort-btn active" data-sort="name" data-period="{{ period }}">
@@ -363,10 +391,73 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Bootstrap 모달 객체
+    const memoModal = new bootstrap.Modal(document.getElementById('memoModal'));
+    
     // ID 생성 헬퍼 함수
     function createPeriodId(period) {
         return period.replace(/\s/g, '-').replace('교시', '').replace('월', '-').replace('일', '');
     }
+    
+    // 메모 버튼에 이벤트 리스너 등록
+    document.querySelectorAll('.memo-button').forEach(button => {
+        // 메모가 있는 경우 has-memo 클래스 추가
+        if (button.dataset.memo && button.dataset.memo.trim() !== '') {
+            button.classList.add('has-memo');
+        }
+        
+        button.addEventListener('click', function() {
+            const date = this.dataset.date;
+            const period = this.dataset.periodText;
+            const memo = this.dataset.memo || '';
+            const periodText = this.closest('.period-header').querySelector('h3').textContent;
+            
+            // 모달에 정보 설정
+            document.getElementById('memoModalLabel').textContent = `${periodText} 메모`;
+            document.getElementById('memoDate').value = date;
+            document.getElementById('memoPeriod').value = period;
+            document.getElementById('memoText').value = memo;
+            
+            // 모달 표시
+            memoModal.show();
+        });
+    });
+    
+    // 메모 저장 버튼 처리
+    document.getElementById('saveMemoBtn').addEventListener('click', function() {
+        const date = document.getElementById('memoDate').value;
+        const period = document.getElementById('memoPeriod').value;
+        const memoText = document.getElementById('memoText').value;
+        
+        // 서버에 메모 저장 요청
+        fetch('/save_memo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                date: date,
+                period: period,
+                memo: memoText
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 메모 저장 성공 시 모달 닫기
+                memoModal.hide();
+                
+                // 페이지 새로고침하여 업데이트된 메모 표시
+                location.reload();
+            } else {
+                alert('메모 저장에 실패했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('메모 저장 중 오류 발생:', error);
+            alert('메모 저장 중 오류가 발생했습니다.');
+        });
+    });
     
     // 복사 버튼에 이벤트 리스너 등록
     document.querySelectorAll('.copy-btn').forEach(button => {
