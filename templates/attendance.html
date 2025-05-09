@@ -3,6 +3,17 @@
 {% block title %}도서실 출석 시스템{% endblock %}
 
 {% block content %}
+<!-- 커스텀 모달 -->
+<div class="modal-background" id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;">
+    <div class="modal-content" style="background: white; width: 300px; margin: 150px auto; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <p id="studentInfoText"></p>
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button id="modalConfirmBtn" class="btn btn-primary" style="margin: 0 10px;">확인</button>
+            <button id="modalCancelBtn" class="btn btn-secondary" style="margin: 0 10px;">취소</button>
+        </div>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow">
@@ -108,15 +119,28 @@ document.addEventListener('DOMContentLoaded', function () {
                     // 이름과 좌석 정보 저장
                     nameInput.value = data.name;
                     
-                    // 확인 메시지 구성
-                    const seatInfo = data.seat ? `\n좌석: ${data.seat}` : '';
-                    const confirmMessage = `선택하신 정보가 맞습니까?\n이름: ${data.name}${seatInfo}`;
+                    // 모달에 정보 표시
+                    const studentName = data.name;
+                    const seatInfo = data.seat ? `(좌석: ${data.seat})` : '';
                     
-                    // 사용자 확인 요청
-                    if (confirm(confirmMessage)) {
+                    // 모달 내용 설정
+                    document.getElementById('studentInfoText').innerHTML = 
+                        `<strong>${studentName} 님${seatInfo}</strong>이 맞습니까?`;
+                    
+                    // 모달 열기
+                    document.getElementById('customModal').style.display = 'block';
+                    
+                    // 모달 확인 버튼에 이벤트 리스너 설정
+                    document.getElementById('modalConfirmBtn').onclick = function() {
+                        document.getElementById('customModal').style.display = 'none';
                         // 확인하면 폼 제출
                         form.submit();
-                    }
+                    };
+                    
+                    // 모달 취소 버튼에 이벤트 리스너 설정
+                    document.getElementById('modalCancelBtn').onclick = function() {
+                        document.getElementById('customModal').style.display = 'none';
+                    };
                 } else {
                     alert("입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.");
                     nameInput.value = '';
