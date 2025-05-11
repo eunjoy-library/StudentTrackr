@@ -214,6 +214,33 @@ def get_current_period():
         if start <= now < end:
             return period
     return 0  # 교시가 아닌 시간일 경우
+    
+def get_current_period_attendance_count():
+    """
+    현재 교시의 출석 인원 수를 반환하는 함수
+    - 현재 교시에 출석한 사람들의 수를 계산
+    - 최대 인원 초과 여부 확인에 사용됨
+    """
+    current_period = get_current_period()
+    if current_period == 0:
+        return 0
+        
+    period_text = f"{current_period}교시"
+    now = datetime.now(KST)
+    today = now.strftime('%Y-%m-%d')
+    
+    if not os.path.exists(FILENAME):
+        return 0
+        
+    count = 0
+    with open(FILENAME, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            attendance_date = row['출석일'].split(' ')[0]  # 날짜 부분만 가져오기
+            if attendance_date == today and row['교시'] == period_text:
+                count += 1
+                
+    return count
 
 def load_student_data():
     """
@@ -391,6 +418,15 @@ def attendance():
         # 출석 가능 시간이 아닌 경우
         if current_period == 0:
             flash("⚠️ 지금은 도서실 이용 시간이 아닙니다.", "danger")
+            return redirect('/')
+            
+        # 현재 교시 출석 인원 확인 (최대 35명)
+        MAX_CAPACITY = 35
+        current_count = get_current_period_attendance_count()
+        
+        # 수용 인원 초과 시 출석 불가
+        if current_count >= MAX_CAPACITY:
+            flash("⚠️ 도서실 수용인원이 초과되었습니다(35명). 4층 공강실로 올라가주세요!", "danger")
             return redirect('/')
             
         student_id = request.form['student_id'].strip()

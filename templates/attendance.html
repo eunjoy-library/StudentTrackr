@@ -123,6 +123,27 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         
+        // 현재 교시 확인
+        const currentPeridodText = document.getElementById("currentPeriod").textContent;
+        const isRegularHours = currentPeridodText !== "시간 외";
+        
+        // 시간 외인 경우 출석 불가
+        if (!isRegularHours) {
+            document.getElementById('studentInfoText').innerHTML = `
+                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                    지금은 도서실 이용 시간이 아닙니다.
+                </div>
+            `;
+            
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('btn-secondary');
+            confirmBtn.classList.remove('btn-primary');
+            
+            document.getElementById('customModal').style.display = 'block';
+            return;
+        }
+        
         // 학생 정보 조회 후 확인 팝업 표시
         fetch(`/lookup_name?student_id=${studentId}`)
             .then(response => response.json())
@@ -135,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const studentName = data.name;
                     const seatInfo = data.seat ? data.seat : '정보 없음';
                     const alreadyAttended = data.already_attended;
+                    const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부 (백엔드에서 받을 예정)
                     
                     // 확인 버튼 참조
                     const confirmBtn = document.getElementById('modalConfirmBtn');
@@ -146,7 +168,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div>공강실 좌석번호: ${seatInfo}</div>
                         </div>`;
                     
-                    if (alreadyAttended) {
+                    if (capacityExceeded) {
+                        // 수용 인원 초과 시
+                        document.getElementById('studentInfoText').innerHTML = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                                도서실 수용인원이 초과되었습니다(35명).<br>
+                                4층 공강실로 올라가주세요!
+                            </div>
+                            ${modalContent}
+                        `;
+                        
+                        // 확인 버튼 비활성화
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.add('btn-secondary');
+                        confirmBtn.classList.remove('btn-primary');
+                    } else if (alreadyAttended) {
                         // 이미 출석한 경우 (관리자도 일반 출석 페이지에서는 추가 출석 허용 안함)
                         const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
                         const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
