@@ -279,8 +279,20 @@ def check_attendance(student_id, admin_override=False):
     
     with open(FILENAME, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        # 한국 시간 기준으로 일주일 전 계산
-        one_week_ago = datetime.now(KST).replace(tzinfo=None) - timedelta(days=7)
+        
+        # 현재 한국 시간
+        now = datetime.now(KST).replace(tzinfo=None)
+        
+        # 현재 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
+        # datetime에서 weekday()는 0이 월요일, 6이 일요일
+        current_weekday = now.weekday()
+        
+        # 이번 주 월요일 계산 (현재가 월요일이면 오늘, 아니면 지난 월요일)
+        days_since_monday = current_weekday
+        this_week_monday = now - timedelta(days=days_since_monday)
+        this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # '이번 주'를 월요일부터 금요일까지로 정의
         for r in reader:
             if r['학번'] == student_id:
                 try:
@@ -300,15 +312,16 @@ def check_attendance(student_id, admin_override=False):
                         latest_attendance_datetime = attend_time
                         last_attendance_date = date_part
                         
-                    # 일주일 이내 출석 횟수 카운트
-                    if attend_time >= one_week_ago:
+                    # 이번 주(월~금) 출석 체크
+                    # 출석날짜가 이번 주 월요일 이후이고, 금요일(weekday=4) 이하인 경우만 카운트
+                    if attend_time >= this_week_monday and attend_time.weekday() <= 4:
                         weekly_attendance_count += 1
                         
-                        # 일주일에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
+                        # 이번 주(월~금)에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
                         if weekly_attendance_count >= 1 and not session.get('admin'):
                             return True, last_attendance_date
                         
-                        # 일주일에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
+                        # 이번 주(월~금)에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
                         if weekly_attendance_count >= 2:
                             return True, last_attendance_date
                             
