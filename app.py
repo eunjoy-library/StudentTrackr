@@ -385,6 +385,14 @@ def favicon():
 def attendance():
     """Main attendance page and form submission handler"""
     if request.method == 'POST':
+        # 현재 교시 확인
+        current_period = get_current_period()
+        
+        # 출석 가능 시간이 아닌 경우
+        if current_period == 0:
+            flash("⚠️ 지금은 도서실 이용 시간이 아닙니다.", "danger")
+            return redirect('/')
+            
         student_id = request.form['student_id'].strip()
         name = request.form['name'].strip()
 

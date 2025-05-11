@@ -90,14 +90,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const nameInput = document.getElementById('name');
     const submitBtn = document.getElementById('submitBtn');
     
-    // 학번 입력 시 버튼 활성화만 처리 (학생 정보는 표시하지 않음)
+    // 학번 입력 시 버튼 활성화 처리 (교시 확인 포함)
     studentIdInput.addEventListener('input', function() {
-        // 입력된 학번이 5자 이상인 경우에만 버튼 활성화
-        if (this.value.trim().length >= 5) {
+        const currentPeridodText = document.getElementById("currentPeriod").textContent;
+        const isRegularHours = currentPeridodText !== "시간 외";
+        
+        // 교시 확인 및 학번 길이 확인
+        if (isRegularHours && this.value.trim().length >= 5) {
             submitBtn.disabled = false;
         } else {
-            submitBtn.disabled = true;
-            nameInput.value = '';
+            // 시간 외인 경우 무조건 버튼 비활성화
+            if (!isRegularHours) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
+                submitBtn.classList.remove("btn-primary");
+                submitBtn.classList.add("btn-secondary");
+            } else {
+                // 정규 시간이지만 학번이 짧은 경우
+                submitBtn.disabled = true;
+                nameInput.value = '';
+            }
         }
     });
     
@@ -278,7 +290,22 @@ document.addEventListener('DOMContentLoaded', function () {
             periodTimeRangeEl.classList.remove('text-success');
         }
 
-        document.getElementById("submitBtn").innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
+        // 출석 버튼 텍스트 및 상태 업데이트
+    const submitBtn = document.getElementById("submitBtn");
+    
+    if (periodNumber > 0) {
+        // 정규 시간 내인 경우 - 활성화
+        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
+        submitBtn.disabled = studentIdInput.value.trim().length < 5; // 학번 입력 여부만 체크
+        submitBtn.classList.remove("btn-secondary");
+        submitBtn.classList.add("btn-primary");
+    } else {
+        // 시간 외인 경우 - 비활성화
+        submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
+        submitBtn.disabled = true;
+        submitBtn.classList.remove("btn-primary");
+        submitBtn.classList.add("btn-secondary");
+    }
     }
 
     setInterval(updateTimeAndPeriod, 1000);
