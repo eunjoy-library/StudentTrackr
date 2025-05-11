@@ -439,7 +439,7 @@ def attendance():
         
         # 수용 인원 초과 시 출석 불가
         if current_count >= MAX_CAPACITY:
-            flash("⚠️ 도서실 수용인원이 초과되었습니다(35명). 4층 공강실로 올라가주세요!", "danger")
+            flash("⚠️ 도서실 수용인원이 초과되었습니다(30명). 4층 공강실로 올라가주세요!", "danger")
             return redirect('/')
             
         student_id = request.form['student_id'].strip()
