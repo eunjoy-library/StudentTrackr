@@ -920,12 +920,23 @@ def lookup_name():
             except:
                 formatted_date = last_attendance_date
         
+        # 현재 교시 출석 인원 수 확인 (최대 35명)
+        MAX_CAPACITY = 35
+        current_period = get_current_period()
+        capacity_exceeded = False
+        
+        # 현재 교시가 유효한 경우에만 확인
+        if current_period > 0:
+            current_count = get_current_period_attendance_count()
+            capacity_exceeded = current_count >= MAX_CAPACITY
+        
         return jsonify({
             'success': True, 
             'name': name, 
             'seat': seat,
             'already_attended': already_attended,
-            'last_attendance_date': formatted_date
+            'last_attendance_date': formatted_date,
+            'capacity_exceeded': capacity_exceeded
         })
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
