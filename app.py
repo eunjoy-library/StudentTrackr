@@ -533,19 +533,28 @@ def list_attendance():
                 # 이미 ISO 형식이면 그대로 사용
                 if ' ' in date_str and len(date_str.split(' ')[1].split(':')) == 3:
                     record['출석일_표시'] = date_str
+                    # 날짜 객체도 저장 (정렬용)
+                    record['_출석일_객체'] = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
                 else:
                     # 날짜만 있는 경우 (YYYY-MM-DD)
                     try:
                         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                         record['출석일_표시'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                        record['_출석일_객체'] = date_obj
                     except ValueError:
                         # 파싱 실패 시 원본 그대로 사용
                         record['출석일_표시'] = date_str
+                        record['_출석일_객체'] = datetime.now() - timedelta(days=365)  # 1년 전 날짜로 설정
             except Exception:
                 # 모든 처리 실패 시 원본 그대로 사용
                 record['출석일_표시'] = date_str
+                record['_출석일_객체'] = datetime.now() - timedelta(days=365)  # 1년 전 날짜로 설정
         else:
             record['출석일_표시'] = ''
+            record['_출석일_객체'] = datetime.now() - timedelta(days=365)  # 1년 전 날짜로 설정
+    
+    # 출석일 내림차순으로 정렬 (최신 출석이 맨 위로)
+    records.sort(key=lambda x: x['_출석일_객체'], reverse=True)
     
     return render_template('list.html', records=records)
 
