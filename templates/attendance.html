@@ -91,13 +91,37 @@ document.addEventListener('DOMContentLoaded', function () {
     const submitBtn = document.getElementById('submitBtn');
     const confirmBtn = document.getElementById('modalConfirmBtn');
     
+    // 중복 출석 방지를 위한 변수
+    let canSubmit = true;
+    
+    // 폼 제출 대신 AJAX 호출로 처리하도록 이벤트 리스너 변경
+    form.addEventListener('submit', function(e) {
+        // 폼 기본 제출 동작 방지
+        e.preventDefault();
+        
+        // 폼을 직접 제출하지 않고 학생 정보 확인 후 처리
+        checkStudentAndSubmit();
+    });
+    
     // 모달 확인 버튼에 이벤트 리스너 설정 (한 번만)
     confirmBtn.addEventListener('click', function() {
         // 비활성화된 버튼은 작동하지 않도록
-        if (!this.disabled) {
+        if (!this.disabled && canSubmit) {
             document.getElementById('customModal').style.display = 'none';
-            // 확인하면 폼 제출
-            form.submit();
+            
+            // 실제 폼 제출
+            let formData = new FormData(form);
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                window.location.href = '/';  // 페이지 새로고침
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('출석 처리 중 오류가 발생했습니다.');
+            });
         }
     });
     
@@ -130,10 +154,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     
-    // 폼 제출 처리
-    form.addEventListener('submit', function (event) {
-        event.preventDefault(); // 항상 기본 제출을 방지
-        
+    // 학생 정보 확인 및 출석 처리 함수
+    function checkStudentAndSubmit() {
         const studentId = studentIdInput.value.trim();
         if (!studentId) {
             alert("학번을 입력해주세요.");
