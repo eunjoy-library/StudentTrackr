@@ -486,7 +486,7 @@ def attendance():
             flash("❌ 학번이 올바르지 않습니다. 다시 확인해주세요.", "danger")
         elif student_info[0].replace(' ', '') != name.replace(' ', ''):
             flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
-        elif check_attendance(student_id)[0]:
+        elif check_attendance(student_id, admin_override=False)[0]:  # 메인 페이지에선 항상 admin_override=False로 체크
             # 메인 출석 페이지에서는 관리자 여부와 관계없이 중복 출석을 금지
             # 관리자는 별도의 추가 출석 페이지를 통해서만 추가 출석 처리 가능
             if session.get('admin'):
@@ -933,7 +933,8 @@ def admin_add_attendance_confirm():
         return redirect('/admin_add_attendance')
     
     # 출석 여부 확인 (경고 정보 포함)
-    already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id)
+    # override 체크 여부에 따라 admin_override 파라미터 결정
+    already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=override)
     
     # 경고 받은 학생 정보 표시 (관리자는 등록 허용)
     if is_warned:
