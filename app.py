@@ -37,8 +37,12 @@ with app.app_context():
 # Add datetime functions to templates
 @app.context_processor
 def inject_now():
-    # 항상 한국 시간을 사용하여 현재 시간 반환
-    return {'now': lambda: datetime.now(KST).replace(tzinfo=None)}
+    # 항상 한국 시간을 사용하여 현재 시간 및 연도 반환
+    now = datetime.now(KST).replace(tzinfo=None)
+    return {
+        'now': lambda: now,
+        'current_year': now.year
+    }
 
 # File configurations
 FILENAME = 'attendance.csv'
@@ -959,7 +963,7 @@ def admin_warnings():
     return render_template(
         'admin_warnings.html',
         warnings=warnings,
-        now=datetime.utcnow()  # 현재 시간 전달 (만료 여부 확인용)
+        now_datetime=datetime.utcnow()  # 현재 시간 전달 (만료 여부 확인용)
     )
 
 @app.route('/admin/warnings/add', methods=['POST'])
