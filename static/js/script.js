@@ -33,8 +33,8 @@ function handleKeyboardShortcuts(e) {
         window.location.href = '/admin';
     }
     
-    // Shift+F 키 조합 감지 (메인 페이지)
-    if (e.shiftKey && e.key === 'F') {
+    // Ctrl+F 키 조합 감지 (메인 페이지)
+    if (e.ctrlKey && !e.shiftKey && e.key === 'f') {
         e.preventDefault();
         window.location.href = '/';
     }
