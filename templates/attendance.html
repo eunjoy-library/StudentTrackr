@@ -52,7 +52,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <form method="post" class="needs-validation" novalidate>
+                <form id="attendanceForm" method="post" class="needs-validation" novalidate>
                     <div class="mb-4">
                         <label for="student_id" class="form-label fs-5">학번</label>
                         <div class="input-group input-group-lg">
@@ -126,7 +126,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // 학번 입력 필드 이벤트 리스너 
     if (studentIdInput) {
         studentIdInput.addEventListener('input', function() {
-            const currentPeriodText = document.getElementById('currentPeriod').textContent;
+            const currentPeriodElement = document.getElementById('currentPeriod');
+            if (!currentPeriodElement) return;
+            
+            const currentPeriodText = currentPeriodElement.textContent;
             const isRegularHours = currentPeriodText !== '시간 외';
             
             // 교시 확인 및 학번 길이 확인
@@ -153,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
                     submitBtn.classList.remove('btn-secondary');
                     submitBtn.classList.add('btn-primary');
-                    nameInput.value = '';
+                    if (nameInput) nameInput.value = '';
                 }
             }
         });
@@ -188,6 +191,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // 기본 제출 동작 방지
             event.preventDefault();
             
+            if (!studentIdInput || !modalConfirmBtn || !customModal) return;
+            
             const studentId = studentIdInput.value.trim();
             if (!studentId) {
                 alert('학번을 입력해주세요.');
@@ -195,16 +200,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             // 현재 교시 확인
-            const currentPeridodText = document.getElementById('currentPeriod').textContent;
-            const isRegularHours = currentPeridodText !== '시간 외';
+            const currentPeriodElement = document.getElementById('currentPeriod');
+            if (!currentPeriodElement) return;
+            
+            const currentPeriodText = currentPeriodElement.textContent;
+            const isRegularHours = currentPeriodText !== '시간 외';
             
             // 시간 외인 경우 출석 불가
             if (!isRegularHours) {
-                document.getElementById('studentInfoText').innerHTML = `
-                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                        지금은 도서실 이용 시간이 아닙니다.
-                    </div>
-                `;
+                const studentInfoText = document.getElementById('studentInfoText');
+                if (studentInfoText) {
+                    studentInfoText.innerHTML = `
+                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                            지금은 도서실 이용 시간이 아닙니다.
+                        </div>
+                    `;
+                }
                 
                 modalConfirmBtn.disabled = true;
                 modalConfirmBtn.classList.add('btn-secondary');
@@ -220,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.success) {
                         // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
-                        nameInput.value = data.name;
+                        if (nameInput) nameInput.value = data.name;
                         
                         // 모달에 정보 표시
                         const studentName = data.name;
@@ -242,9 +253,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
                         studentAlreadyAttended = alreadyAttended;
                         
+                        const studentInfoText = document.getElementById('studentInfoText');
+                        if (!studentInfoText) return;
+                        
                         if (isWarned) {
                             // 경고 받은 학생인 경우
-                            document.getElementById('studentInfoText').innerHTML = `
+                            studentInfoText.innerHTML = `
                                 <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
                                     도서실 이용이 제한된 상태입니다.<br>
                                     사유: ${warningMessage || '도서실 이용 규정 위반'}<br>
@@ -259,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             modalConfirmBtn.classList.remove('btn-primary');
                         } else if (capacityExceeded) {
                             // 수용 인원 초과 시
-                            document.getElementById('studentInfoText').innerHTML = `
+                            studentInfoText.innerHTML = `
                                 <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
                                     도서실 수용인원이 초과되었습니다(35명).<br>
                                     4층 공강실로 올라가주세요!
@@ -278,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             
                             if (isAdmin) {
                                 // 관리자 - 추가 출석 허용
-                                document.getElementById('studentInfoText').innerHTML = `
+                                studentInfoText.innerHTML = `
                                     <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px;">
                                         이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
@@ -295,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 studentAlreadyAttended = false;
                             } else {
                                 // 일반 학생 - 출석 제한 및 메시지 표시
-                                document.getElementById('studentInfoText').innerHTML = `
+                                studentInfoText.innerHTML = `
                                     <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
                                         이미 이번주에 출석하였습니다.
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
@@ -311,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         } else {
                             // 처음 출석하는 경우
-                            document.getElementById('studentInfoText').innerHTML = `
+                            studentInfoText.innerHTML = `
                                 선택하신 정보가 맞습니까?<br><br>
                                 ${modalContent}
                             `;
@@ -326,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         customModal.style.display = 'block';
                     } else {
                         alert('입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.');
-                        nameInput.value = '';
+                        if (nameInput) nameInput.value = '';
                     }
                 })
                 .catch(err => {
@@ -458,364 +472,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-});
-</script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.querySelector('form');
-    const studentIdInput = document.getElementById('student_id');
-    const nameInput = document.getElementById('name');
-    const submitBtn = document.getElementById('submitBtn');
-    const confirmBtn = document.getElementById('modalConfirmBtn');
-    
-    // 중복 출석 방지를 위한 변수
-    let canSubmit = true;
-    
-    // 폼 제출 대신 AJAX 호출로 처리하도록 이벤트 리스너 변경
-    form.addEventListener('submit', function(e) {
-        // 폼 기본 제출 동작 방지
-        e.preventDefault();
-        
-        // 폼을 직접 제출하지 않고 학생 정보 확인 후 처리
-        checkStudentAndSubmit();
-    });
-    
-    // 모달 확인 버튼에 이벤트 리스너 설정 (한 번만)
-    confirmBtn.addEventListener('click', function() {
-        // 비활성화된 버튼은 작동하지 않도록
-        if (!this.disabled && canSubmit) {
-            document.getElementById('customModal').style.display = 'none';
-            
-            // 실제 폼 제출
-            let formData = new FormData(form);
-            fetch('/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                window.location.href = '/';  // 페이지 새로고침
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('출석 처리 중 오류가 발생했습니다.');
-            });
-        }
-    });
-    
-    // 학번 입력 시 버튼 활성화 처리 (교시 확인 포함)
-    studentIdInput.addEventListener('input', function() {
-        const currentPeridodText = document.getElementById("currentPeriod").textContent;
-        const isRegularHours = currentPeridodText !== "시간 외";
-        
-        // 교시 확인 및 학번 길이 확인
-        if (isRegularHours && this.value.trim().length >= 5) {
-            submitBtn.disabled = false;
-        } else {
-            // 시간 외인 경우 무조건 버튼 비활성화
-            if (!isRegularHours) {
-                submitBtn.disabled = true;
-                // 4교시인 경우 특별 메시지
-                const periodNum = document.getElementById("currentPeriod").textContent;
-                if (periodNum.includes("4교시")) {
-                    submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>4교시는 도서실 이용 시간이 아닙니다`;
-                } else {
-                    submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
-                }
-                submitBtn.classList.remove("btn-primary");
-                submitBtn.classList.add("btn-secondary");
-            } else {
-                // 정규 시간이지만 학번이 짧은 경우
-                submitBtn.disabled = true;
-                nameInput.value = '';
-            }
-        }
-    });
-    
-    // 학생 정보 확인 및 출석 처리 함수
-    function checkStudentAndSubmit() {
-        const studentId = studentIdInput.value.trim();
-        if (!studentId) {
-            alert("학번을 입력해주세요.");
-            return;
-        }
-        
-        // 현재 교시 확인
-        const currentPeridodText = document.getElementById("currentPeriod").textContent;
-        const isRegularHours = currentPeridodText !== "시간 외";
-        
-        // 시간 외인 경우 출석 불가
-        if (!isRegularHours) {
-            document.getElementById('studentInfoText').innerHTML = `
-                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                    지금은 도서실 이용 시간이 아닙니다.
-                </div>
-            `;
-            
-            const confirmBtn = document.getElementById('modalConfirmBtn');
-            confirmBtn.disabled = true;
-            confirmBtn.classList.add('btn-secondary');
-            confirmBtn.classList.remove('btn-primary');
-            
-            document.getElementById('customModal').style.display = 'block';
-            return;
-        }
-        
-        // 학생 정보 조회 후 확인 팝업 표시
-        fetch(`/lookup_name?student_id=${studentId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
-                    nameInput.value = data.name;
-                    
-                    // 이름 마스킹 함수 - 가운데 글자를 *로 대체
-                    function maskName(name) {
-                        if (!name || name.length <= 1) return name;
-                        
-                        // 한글은 보통 2~4글자 (2글자: 성+이름, 3글자: 성+이름2글자, 4글자: 복성+이름)
-                        if (name.length === 2) {
-                            // 2글자 이름은 두번째 글자만 *로 대체
-                            return name.charAt(0) + '*';
-                        } else if (name.length === 3) {
-                            // 3글자 이름은 가운데 글자만 *로 대체
-                            return name.charAt(0) + '*' + name.charAt(2);
-                        } else if (name.length === 4) {
-                            // 4글자 이름은 가운데 두 글자를 *로 대체
-                            return name.charAt(0) + '**' + name.charAt(3);
-                        } else {
-                            // 5글자 이상인 경우 (외국인 이름 등) 가운데 부분만 *로 대체
-                            const firstChar = name.charAt(0);
-                            const lastChar = name.charAt(name.length - 1);
-                            const maskedPart = '*'.repeat(name.length - 2);
-                            return firstChar + maskedPart + lastChar;
-                        }
-                    }
-                    
-                    // 모달에 정보 표시
-                    const studentName = data.name;
-                    const maskedName = maskName(studentName); // 마스킹된 이름
-                    const seatInfo = data.seat ? data.seat : '정보 없음';
-                    const alreadyAttended = data.already_attended;
-                    const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부
-                    const isWarned = data.is_warned; // 경고 여부
-                    const warningExpiry = data.warning_expiry; // 경고 만료일
-                    const warningMessage = data.warning_message; // 경고 사유
-                    
-                    // 확인 버튼 참조
-                    const confirmBtn = document.getElementById('modalConfirmBtn');
-                    
-                    // 모달 내용 설정
-                    let modalContent = `
-                        <div style="font-size: 20px; font-weight: bold; color: #000;">
-                            <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
-                            <div>공강실 좌석번호: ${seatInfo}</div>
-                        </div>`;
-                    
-                    if (isWarned) {
-                        // 경고 받은 학생인 경우
-                        document.getElementById('studentInfoText').innerHTML = `
-                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                                도서실 이용이 제한된 상태입니다.<br>
-                                사유: ${warningMessage || '도서실 이용 규정 위반'}<br>
-                                해제일: ${warningExpiry || '관리자에게 문의하세요'}
-                            </div>
-                            ${modalContent}
-                        `;
-                        
-                        // 확인 버튼 비활성화
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.add('btn-secondary');
-                        confirmBtn.classList.remove('btn-primary');
-                    } else if (capacityExceeded) {
-                        // 수용 인원 초과 시
-                        document.getElementById('studentInfoText').innerHTML = `
-                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                                도서실 수용인원이 초과되었습니다(30명).<br>
-                                4층 공강실로 올라가주세요!
-                            </div>
-                            ${modalContent}
-                        `;
-                        
-                        // 확인 버튼 비활성화
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.add('btn-secondary');
-                        confirmBtn.classList.remove('btn-primary');
-                    } else if (alreadyAttended) {
-                        // 이미 출석한 경우 (관리자는 추가 출석 허용)
-                        const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
-                        const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
-                        
-                        if (isAdmin) {
-                            // 관리자 - 추가 출석 허용
-                            document.getElementById('studentInfoText').innerHTML = `
-                                <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px;">
-                                    이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
-                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
-                                </div>
-                                ${modalContent}
-                            `;
-                            
-                            // 관리자는 확인 버튼 활성화
-                            confirmBtn.disabled = false;
-                            confirmBtn.classList.remove('btn-secondary');
-                            confirmBtn.classList.add('btn-warning'); // 경고색으로 구분
-                        } else {
-                            // 일반 학생 - 출석 제한 및 메시지 표시
-                            document.getElementById('studentInfoText').innerHTML = `
-                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                    이미 이번주에 출석하였습니다.
-                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                                </div>
-                                ${modalContent}
-                            `;
-                            
-                            // 확인 버튼 비활성화
-                            confirmBtn.disabled = true;
-                            confirmBtn.classList.add('btn-secondary');
-                            confirmBtn.classList.remove('btn-primary');
-                            confirmBtn.classList.remove('btn-warning');
-                        }
-                    } else {
-                        // 처음 출석하는 경우
-                        document.getElementById('studentInfoText').innerHTML = `
-                            선택하신 정보가 맞습니까?<br><br>
-                            ${modalContent}
-                        `;
-                        
-                        // 확인 버튼 활성화
-                        confirmBtn.disabled = false;
-                        confirmBtn.classList.add('btn-primary');
-                        confirmBtn.classList.remove('btn-secondary');
-                    }
-                    
-                    // 모달 열기
-                    document.getElementById('customModal').style.display = 'block';
-                    
-                    // 모달 취소 버튼에 이벤트 리스너 설정
-                    document.getElementById('modalCancelBtn').onclick = function() {
-                        document.getElementById('customModal').style.display = 'none';
-                    };
-                } else {
-                    alert("입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.");
-                    nameInput.value = '';
-                }
-            })
-            .catch(err => {
-                console.error("학생 정보 조회 중 오류 발생", err);
-                alert("학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.");
-            });
-    });
-
-    function updateTimeAndPeriod() {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const day = now.getDate();
-        const hour = now.getHours();
-        const minute = now.getMinutes();
-        const second = now.getSeconds();
-
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        const formattedSecond = second.toString().padStart(2, '0');
-
-        let period = '시간 외';
-        let periodNumber = 0;
-
-        const schedule = [
-            [7, 50, 9, 15], [9, 15, 10, 40], [10, 40, 12, 5], [12, 5, 12, 30],
-            [12, 30, 14, 25], [14, 25, 15, 50]
-        ];
-
-        let currentPeriodStartTime = '', currentPeriodEndTime = '';
-
-        for (let i = 0; i < schedule.length; i++) {
-            const [sh, sm, eh, em] = schedule[i];
-            const start = new Date(); start.setHours(sh, sm, 0);
-            const end = new Date(); end.setHours(eh, em, 0);
-            const current = new Date(); current.setHours(hour, minute, second);
-
-            if (current >= start && current < end) {
-                periodNumber = i + 1;
-                
-                // 4교시(인덱스 3)는 도서실 이용 불가
-                if (periodNumber === 4) {
-                    period = '시간 외';
-                    currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
-                    currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
-                    break;
-                }
-                
-                period = `${periodNumber}교시`;
-                currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
-                currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
-                break;
-            }
-        }
-
-        const dayOfWeekNames = ['일', '월', '화', '수', '목', '금', '토'];
-        const dayOfWeek = dayOfWeekNames[now.getDay()];
-
-        document.getElementById("currentMonthDay").innerHTML = `
-            <span class="badge bg-primary me-1">${month}월</span>
-            <span class="badge bg-primary me-1">${day}일</span>
-            <span class="badge bg-secondary me-2">(${dayOfWeek})</span>
-            <span class="fw-bold">${formattedHour}:<span class="time-blink">${formattedMinute}</span>:<span class="seconds-blink">${formattedSecond}</span></span>
-        `;
-
-        const currentPeriodEl = document.getElementById("currentPeriod");
-        if (periodNumber > 0) {
-            currentPeriodEl.className = "badge bg-success";
-        } else {
-            currentPeriodEl.className = "badge bg-secondary";
-        }
-        currentPeriodEl.textContent = period;
-
-        const periodTimeRangeEl = document.getElementById("periodTimeRange");
-        if (periodNumber > 0) {
-            periodTimeRangeEl.textContent = `${currentPeriodStartTime} - ${currentPeriodEndTime}`;
-            periodTimeRangeEl.classList.add('text-success');
-            periodTimeRangeEl.classList.remove('text-secondary');
-        } else {
-            const current = new Date();
-            current.setHours(hour, minute, second);
-            let nextPeriodIndex = -1, nextPeriodStartTime = '';
-            for (let i = 0; i < schedule.length; i++) {
-                const [sh, sm] = schedule[i];
-                const start = new Date(); start.setHours(sh, sm, 0);
-                if (current < start) {
-                    nextPeriodIndex = i;
-                    nextPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
-                    break;
-                }
-            }
-            if (nextPeriodIndex !== -1) {
-                periodTimeRangeEl.textContent = `다음 ${nextPeriodIndex + 1}교시: ${nextPeriodStartTime}부터`;
-            } else {
-                periodTimeRangeEl.textContent = "모든 교시가 종료되었습니다";
-            }
-            periodTimeRangeEl.classList.add('text-secondary');
-            periodTimeRangeEl.classList.remove('text-success');
-        }
-
-        // 출석 버튼 텍스트 및 상태 업데이트
-    const submitBtn = document.getElementById("submitBtn");
-    
-    if (periodNumber > 0) {
-        // 정규 시간 내인 경우 - 활성화
-        submitBtn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${period} 출석하기`;
-        submitBtn.disabled = studentIdInput.value.trim().length < 5; // 학번 입력 여부만 체크
-        submitBtn.classList.remove("btn-secondary");
-        submitBtn.classList.add("btn-primary");
-    } else {
-        // 시간 외인 경우 - 비활성화
-        submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
-        submitBtn.disabled = true;
-        submitBtn.classList.remove("btn-primary");
-        submitBtn.classList.add("btn-secondary");
-    }
-    }
-
-    setInterval(updateTimeAndPeriod, 1000);
-    updateTimeAndPeriod();
 });
 </script>
 {% endblock %}
