@@ -356,8 +356,9 @@ def check_attendance(student_id, admin_override=False):
                     continue
         
         # 모든 출석 기록을 확인한 후 주간 출석 횟수에 따라 출석 제한 여부 결정
-        # 이번 주에 이미 한 번 출석한 경우 (관리자는 제한 없음)
-        if weekly_attendance_count >= 1 and not session.get('admin'):
+        # 이번 주에 이미 한 번 출석한 경우
+        # admin_override 파라미터를 통해 관리자 여부를 확인 (session에서 직접 확인하지 않음)
+        if weekly_attendance_count >= 1:
             return True, last_attendance_date, False, None
         # 일주일 이내 출석은 없지만, 과거 출석 기록이 있는 경우
         if last_attendance_date:
