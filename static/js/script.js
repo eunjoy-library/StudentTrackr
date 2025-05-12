@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 숨겨진 관리자 링크 설정
     const hiddenAdminLink = document.getElementById('hiddenAdminLink');
     if (hiddenAdminLink) {
-        // 클릭 이벤트 등록 (2번 빠르게 클릭하면 관리자 페이지로 이동)
+        // 클릭 이벤트 등록 (3번 빠르게 클릭해야 관리자 페이지로 이동)
         hiddenAdminLink.addEventListener('click', function(e) {
             e.preventDefault();
             secretClickCount++;
             
-            if (secretClickCount >= 2) {
+            if (secretClickCount >= 3) { // 3번으로 변경
                 window.location.href = '/admin';
                 secretClickCount = 0;
             } else {
@@ -58,20 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // 시계를 클릭해도 접근 가능하게 설정
-        const fixedTimeDisplay = document.getElementById('fixedTimeDisplay');
-        if (fixedTimeDisplay) {
-            fixedTimeDisplay.addEventListener('click', function() {
-                secretClickCount++;
-                
-                if (secretClickCount >= 2) {
-                    window.location.href = '/admin';
-                    secretClickCount = 0;
-                } else {
-                    secretClickReset();
-                }
-            });
-        }
+        // 시계를 통한 접근은 삭제
     }
     
     // 자동 숨김 코드 제거 (시간 표시가 사라지지 않도록)
