@@ -1069,7 +1069,12 @@ def lookup_name():
     if student_info:
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
-        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id)
+        
+        # 관리자 여부 확인
+        is_admin = session.get('admin', False)
+        
+        # 출석 여부 확인 (경고 정보 포함) - 관리자 권한 전달
+        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=is_admin)
         
         # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
         formatted_date = None
