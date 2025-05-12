@@ -89,6 +89,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const studentIdInput = document.getElementById('student_id');
     const nameInput = document.getElementById('name');
     const submitBtn = document.getElementById('submitBtn');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    
+    // 모달 확인 버튼에 이벤트 리스너 설정 (한 번만)
+    confirmBtn.addEventListener('click', function() {
+        // 비활성화된 버튼은 작동하지 않도록
+        if (!this.disabled) {
+            document.getElementById('customModal').style.display = 'none';
+            // 확인하면 폼 제출
+            form.submit();
+        }
+    });
     
     // 학번 입력 시 버튼 활성화 처리 (교시 확인 포함)
     studentIdInput.addEventListener('input', function() {
@@ -280,16 +291,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     // 모달 열기
                     document.getElementById('customModal').style.display = 'block';
-                    
-                    // 모달 확인 버튼에 이벤트 리스너 설정
-                    confirmBtn.onclick = function() {
-                        // 비활성화된 버튼은 작동하지 않도록
-                        if (!this.disabled) {
-                            document.getElementById('customModal').style.display = 'none';
-                            // 확인하면 폼 제출
-                            form.submit();
-                        }
-                    };
                     
                     // 모달 취소 버튼에 이벤트 리스너 설정
                     document.getElementById('modalCancelBtn').onclick = function() {
