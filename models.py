@@ -60,3 +60,24 @@ class Warning(db.Model):
             db.session.commit()
             return True
         return False
+        
+    @staticmethod
+    def delete_warning(warning_id):
+        """경고 완전 삭제"""
+        warning = Warning.query.get(warning_id)
+        if warning:
+            db.session.delete(warning)
+            db.session.commit()
+            return True
+        return False
+        
+    @staticmethod
+    def delete_all_warnings():
+        """모든 경고 삭제"""
+        try:
+            Warning.query.delete()
+            db.session.commit()
+            return True
+        except:
+            db.session.rollback()
+            return False

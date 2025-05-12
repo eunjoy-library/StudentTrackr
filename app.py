@@ -1013,6 +1013,36 @@ def remove_warning(warning_id):
         
     return redirect('/admin/warnings')
 
+@app.route('/admin/warnings/delete/<int:warning_id>', methods=['POST'])
+def delete_warning(warning_id):
+    """학생 경고 완전 삭제 처리"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    # 경고 완전 삭제
+    if Warning.delete_warning(warning_id):
+        flash("경고가 완전히 삭제되었습니다.", "success")
+    else:
+        flash("경고 삭제 중 오류가 발생했습니다.", "danger")
+        
+    return redirect('/admin/warnings')
+
+@app.route('/admin/warnings/delete-all', methods=['POST'])
+def delete_all_warnings():
+    """모든 경고 삭제 처리"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    # 모든 경고 삭제
+    if Warning.delete_all_warnings():
+        flash("모든 경고가 삭제되었습니다.", "success")
+    else:
+        flash("경고 삭제 중 오류가 발생했습니다.", "danger")
+        
+    return redirect('/admin/warnings')
+
 @app.route('/logout')
 def logout():
     """Logout from admin"""
