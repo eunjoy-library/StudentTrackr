@@ -25,12 +25,18 @@ function updateFixedTimeDisplay() {
 let secretClickCount = 0;
 const secretClickReset = () => setTimeout(() => { secretClickCount = 0; }, 2000);
 
-// 특수 키 조합 (Ctrl+Shift+A) 감지 함수
-function handleAdminAccess(e) {
-    // Ctrl+Shift+A 키 조합 감지
+// 특수 키 조합 감지 함수
+function handleKeyboardShortcuts(e) {
+    // Ctrl+Shift+A 키 조합 감지 (관리자 페이지)
     if (e.ctrlKey && e.shiftKey && e.key === 'A') {
         e.preventDefault();
         window.location.href = '/admin';
+    }
+    
+    // Shift+F 키 조합 감지 (메인 페이지)
+    if (e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        window.location.href = '/';
     }
 }
 
@@ -40,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateFixedTimeDisplay, 1000);
     
     // 키보드 단축키 등록
-    document.addEventListener('keydown', handleAdminAccess);
+    document.addEventListener('keydown', handleKeyboardShortcuts);
     
     // 숨겨진 관리자 링크 설정
     const hiddenAdminLink = document.getElementById('hiddenAdminLink');
