@@ -149,11 +149,35 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 이름과 좌석 정보 저장
+                    // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
                     nameInput.value = data.name;
+                    
+                    // 이름 마스킹 함수 - 가운데 글자를 *로 대체
+                    function maskName(name) {
+                        if (!name || name.length <= 1) return name;
+                        
+                        // 한글은 보통 2~4글자 (2글자: 성+이름, 3글자: 성+이름2글자, 4글자: 복성+이름)
+                        if (name.length === 2) {
+                            // 2글자 이름은 두번째 글자만 *로 대체
+                            return name.charAt(0) + '*';
+                        } else if (name.length === 3) {
+                            // 3글자 이름은 가운데 글자만 *로 대체
+                            return name.charAt(0) + '*' + name.charAt(2);
+                        } else if (name.length === 4) {
+                            // 4글자 이름은 가운데 두 글자를 *로 대체
+                            return name.charAt(0) + '**' + name.charAt(3);
+                        } else {
+                            // 5글자 이상인 경우 (외국인 이름 등) 가운데 부분만 *로 대체
+                            const firstChar = name.charAt(0);
+                            const lastChar = name.charAt(name.length - 1);
+                            const maskedPart = '*'.repeat(name.length - 2);
+                            return firstChar + maskedPart + lastChar;
+                        }
+                    }
                     
                     // 모달에 정보 표시
                     const studentName = data.name;
+                    const maskedName = maskName(studentName); // 마스킹된 이름
                     const seatInfo = data.seat ? data.seat : '정보 없음';
                     const alreadyAttended = data.already_attended;
                     const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부 (백엔드에서 받을 예정)
@@ -164,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     // 모달 내용 설정
                     let modalContent = `
                         <div style="font-size: 20px; font-weight: bold; color: #000;">
-                            <div style="margin-bottom: 10px;">이름: ${studentName} 님</div>
+                            <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
                             <div>공강실 좌석번호: ${seatInfo}</div>
                         </div>`;
                     
