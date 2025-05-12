@@ -414,6 +414,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentMonthDay = document.getElementById('currentMonthDay');
         const currentPeriodElement = document.getElementById('currentPeriod');
         const periodTimeRangeElement = document.getElementById('periodTimeRange');
+        const submitBtnText = document.getElementById('submitBtnText');
         
         if (!currentMonthDay || !currentPeriodElement || !periodTimeRangeElement) return;
         
@@ -469,6 +470,12 @@ document.addEventListener('DOMContentLoaded', function () {
         currentPeriodElement.textContent = currentPeriod;
         // 시간 범위 표시
         periodTimeRangeElement.textContent = timeRange;
+        
+        // 버튼 텍스트 업데이트 (교시 정보에 따라 동적으로 변경)
+        if (submitBtnText && currentPeriod !== '시간 외' && currentPeriod !== '4교시') {
+            // 정규 교시인 경우 "n교시 출석하기"로 변경
+            submitBtnText.textContent = currentPeriod + ' 출석하기';
+        }
         
         // 교시에 따라 배지 색상 변경
         if (currentPeriod === '시간 외' || currentPeriod === '4교시') {
