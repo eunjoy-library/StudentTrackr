@@ -231,23 +231,29 @@ document.addEventListener('DOMContentLoaded', function () {
                         confirmBtn.classList.add('btn-secondary');
                         confirmBtn.classList.remove('btn-primary');
                     } else if (alreadyAttended) {
-                        // 이미 출석한 경우 (관리자도 일반 출석 페이지에서는 추가 출석 허용 안함)
+                        // 이미 출석한 경우 (관리자는 추가 출석 허용)
                         const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
                         const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
                         
-                        document.getElementById('studentInfoText').innerHTML = `
-                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                이미 이번주에 출석하였습니다.
-                                ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                            </div>
-                            ${modalContent}
-                        `;
-                        
-                        // 확인 버튼 비활성화 (관리자도 마찬가지)
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.add('btn-secondary');
-                        confirmBtn.classList.remove('btn-primary');
-                        confirmBtn.classList.remove('btn-warning');
+                        if (isAdmin) {
+                            // 관리자 - 추가 출석 허용
+                            document.getElementById('studentInfoText').innerHTML = `
+                                <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px;">
+                                    이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
+                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
+                                </div>
+                                ${modalContent}
+                            `;
+                            
+                            // 관리자는 확인 버튼 활성화
+                            confirmBtn.disabled = false;
+                            confirmBtn.classList.remove('btn-secondary');
+                            confirmBtn.classList.add('btn-warning'); // 경고색으로 구분
+                        } else {
+                            // 일반 학생 - 출석 제한 및 메시지 없음
+                            location.href = '/';
+                            return;
+                        }
                     } else {
                         // 처음 출석하는 경우
                         document.getElementById('studentInfoText').innerHTML = `
