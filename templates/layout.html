@@ -96,11 +96,11 @@
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/list' %}active{% endif %}" href="/list">
                                     <i class="fas fa-list me-2"></i> 출석 명단
                                 </a>
-                                <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/stats' %}active{% endif %}" href="/stats">
-                                    <i class="fas fa-chart-bar me-2"></i> 통계
-                                </a>
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/admin_add_attendance' %}active{% endif %}" href="/admin_add_attendance">
                                     <i class="fas fa-plus-circle me-2"></i> 추가 출석하기
+                                </a>
+                                <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/admin/warnings' %}active{% endif %}" href="/admin/warnings">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> 경고 관리
                                 </a>
                             </div>
                         </div>
@@ -111,11 +111,11 @@
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/export' %}active{% endif %}" href="/export">
                                     <i class="fas fa-file-export me-2"></i> CSV 다운로드
                                 </a>
+                                <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/stats' %}active{% endif %}" href="/stats">
+                                    <i class="fas fa-chart-bar me-2"></i> 통계
+                                </a>
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/print' %}active{% endif %}" href="/print">
                                     <i class="fas fa-print me-2"></i> 출석 출력
-                                </a>
-                                <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/admin/warnings' %}active{% endif %}" href="/admin/warnings">
-                                    <i class="fas fa-exclamation-triangle me-2"></i> 경고 관리
                                 </a>
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center" href="/logout">
                                     <i class="fas fa-sign-out-alt me-2"></i> 로그아웃
