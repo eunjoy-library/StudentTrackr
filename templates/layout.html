@@ -79,7 +79,7 @@
     
     {% if session.get('admin') and request.path != '/' and request.path != '/attendance' %}
     <!-- 상단 관리자 메뉴 -->
-    <div class="container-fluid bg-dark py-2 mb-4" style="margin-top: 40px;">
+    <div class="container-fluid bg-dark py-2 mb-0" style="margin-top: 40px;">
         <div class="container">
             <div class="card border-0 bg-transparent">
                 <div class="card-header bg-dark text-white border-0 pb-0">
@@ -129,7 +129,7 @@
     </div>
     {% endif %}
     
-    <div class="container my-4">
+    <div class="container mt-0 mb-4">
         {% block content %}{% endblock %}
         
         <!-- Flash messages -->
