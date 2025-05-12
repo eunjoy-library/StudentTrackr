@@ -1113,5 +1113,98 @@ def lookup_name():
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
 
+@app.route('/delete_before_date', methods=['GET', 'POST'])
+def delete_before_date():
+    """특정 날짜 이전의 모든 출석 기록 삭제 (관리자 전용)"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+    
+    if request.method == 'POST':
+        date_str = request.form.get('delete_date')
+        if not date_str:
+            flash("삭제할 기준 날짜를 입력해주세요.", "warning")
+            return redirect('/by_period')
+            
+        try:
+            # 기준 날짜 파싱
+            cutoff_date = datetime.strptime(date_str, '%Y-%m-%d')
+            
+            # 모든 출석 데이터 불러오기
+            all_records = load_attendance()
+            
+            # 백업 파일에 이미 데이터가 있는지 확인
+            backup_exists = os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) > 0
+            
+            # 백업 파일 모드 결정 (새 파일 또는 추가)
+            backup_mode = 'a' if backup_exists else 'w'
+            
+            # 삭제 대상 레코드와 유지할 레코드 분류
+            records_to_delete = []
+            records_to_keep = []
+            
+            for record in all_records:
+                date_str = record.get('출석일', '')
+                if ' ' in date_str:  # 날짜와 시간 있는 형식 (2025-05-09 10:57:36)
+                    attendance_date = datetime.strptime(date_str.split(' ')[0], '%Y-%m-%d')
+                else:  # 날짜만 있는 형식 (2025-05-09)
+                    try:
+                        attendance_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    except ValueError:
+                        # 날짜 파싱 실패 시 현재 날짜로 처리 (= 유지)
+                        records_to_keep.append(record)
+                        continue
+                
+                # 기준 날짜 이전인지 확인
+                if attendance_date < cutoff_date:
+                    records_to_delete.append(record)
+                else:
+                    records_to_keep.append(record)
+            
+            # 백업 파일에 삭제 대상 레코드 저장
+            with open(BACKUP_FILE, backup_mode, newline='', encoding='utf-8') as backup_file:
+                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+                backup_writer = csv.DictWriter(backup_file, fieldnames=fieldnames)
+                
+                # 새 파일인 경우 헤더 작성
+                if not backup_exists:
+                    backup_writer.writeheader()
+                
+                # 삭제할 레코드 백업
+                for record in records_to_delete:
+                    backup_writer.writerow(record)
+                    logging.info(f"Marking for deletion: 학번={record.get('학번')}, 날짜={record.get('출석일')}, 교시={record.get('교시')}")
+            
+            logging.info(f"Backing up {len(records_to_delete)} records to {BACKUP_FILE} before deletion")
+            
+            # 원본 파일 업데이트 (삭제 후 유지할 레코드만 저장)
+            with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
+                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(records_to_keep)
+                
+            # Excel 호환 파일도 업데이트
+            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as excel_file:
+                excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames)
+                excel_writer.writeheader()
+                excel_writer.writerows(records_to_keep)
+                
+            logging.info(f"Saving {len(records_to_keep)} records after deletion (removed {len(records_to_delete)} records)")
+            
+            if records_to_delete:
+                flash(f"✅ {date_str} 이전의 {len(records_to_delete)}개 출석 기록이 삭제되었습니다.", "success")
+            else:
+                flash(f"⚠️ {date_str} 이전의 출석 기록이 없습니다.", "warning")
+                
+        except ValueError as e:
+            flash(f"❌ 날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요: {e}", "danger")
+        except Exception as e:
+            logging.error(f"Error deleting records before date: {e}")
+            flash(f"❌ 출석 기록 삭제 중 오류가 발생했습니다: {e}", "danger")
+            
+    # GET 요청 시 또는 POST 처리 후 페이지로 리다이렉트
+    return redirect('/by_period')
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
