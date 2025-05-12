@@ -299,7 +299,7 @@ def check_attendance(student_id, admin_override=False):
         return False, None, True, warning_info
         
     if not os.path.exists(FILENAME):
-        return False, None
+        return False, None, False, None
         
     last_attendance_date = None
     latest_attendance_datetime = None
@@ -347,20 +347,20 @@ def check_attendance(student_id, admin_override=False):
                         
                         # 이번 주(월~금)에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
                         if weekly_attendance_count >= 1 and not session.get('admin'):
-                            return True, last_attendance_date
+                            return True, last_attendance_date, False, None
                         
                         # 이번 주(월~금)에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
                         if weekly_attendance_count >= 2:
-                            return True, last_attendance_date
+                            return True, last_attendance_date, False, None
                             
                 except ValueError:
                     continue
                     
         # 일주일 이내 출석은 없지만, 과거 출석 기록이 있는 경우
         if last_attendance_date:
-            return False, last_attendance_date
+            return False, last_attendance_date, False, None
             
-        return False, None
+        return False, None, False, None
 
 def load_attendance():
     """
@@ -950,7 +950,7 @@ def lookup_name():
     if student_info:
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
-        already_attended, last_attendance_date = check_attendance(student_id)
+        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id)
         
         # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
         formatted_date = None
@@ -960,6 +960,14 @@ def lookup_name():
                 formatted_date = date_obj.strftime('%Y년 %m월 %d일')
             except:
                 formatted_date = last_attendance_date
+        
+        # 경고 정보 처리
+        warning_message = None
+        warning_expiry = None
+        if is_warned and warning_info:
+            # 경고 만료일 포맷팅
+            warning_expiry = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
+            warning_message = warning_info.reason or "도서실 이용 규정 위반"
         
         # 현재 교시 출석 인원 수 확인 (최대 35명)
         MAX_CAPACITY = 35
@@ -977,7 +985,10 @@ def lookup_name():
             'seat': seat,
             'already_attended': already_attended,
             'last_attendance_date': formatted_date,
-            'capacity_exceeded': capacity_exceeded
+            'capacity_exceeded': capacity_exceeded,
+            'is_warned': is_warned,
+            'warning_expiry': warning_expiry,
+            'warning_message': warning_message
         })
     else:
         return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
