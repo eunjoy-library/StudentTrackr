@@ -1072,11 +1072,10 @@ def lookup_name():
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
         
-        # 관리자 여부 확인
-        is_admin = session.get('admin', False)
-        
-        # 출석 여부 확인 (경고 정보 포함) - 관리자 권한 전달
-        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=is_admin)
+        # lookup_name API에서는 admin_override를 False로 설정
+        # - 관리자 여부와 관계없이 이미 출석한 학생은 이미 출석한 것으로 표시
+        # - 모달창에서 경고 메시지 표시를 위함
+        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=False)
         
         # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
         formatted_date = None
