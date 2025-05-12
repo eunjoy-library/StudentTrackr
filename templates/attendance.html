@@ -66,7 +66,7 @@
                     <input type="hidden" id="name" name="name" required>
                     <div class="d-grid mt-4">
                         <button type="submit" id="submitBtn" class="btn btn-primary btn-lg py-3" style="font-size: 1.25rem; font-weight: bold;" disabled>
-                            <i class="fas fa-check-circle me-2"></i>출석하기
+                            <i class="fas fa-check-circle me-2"></i><span id="submitBtnText">출석하기</span>
                         </button>
                     </div>
                 </form>
@@ -90,12 +90,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const studentIdInput = document.getElementById('student_id');
     const nameInput = document.getElementById('name');
     const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
     const modalConfirmBtn = document.getElementById('modalConfirmBtn');
     const modalCancelBtn = document.getElementById('modalCancelBtn');
     const customModal = document.getElementById('customModal');
+    const currentPeriodElement = document.getElementById('currentPeriod');
     
     // 학생이 이미 출석했는지 여부를 저장하는 상태
     let studentAlreadyAttended = false;
+    
+    // 교시에 따라 출석 버튼 텍스트 업데이트
+    function updateSubmitButtonText() {
+        if (currentPeriodElement) {
+            const currentPeriodText = currentPeriodElement.textContent;
+            if (currentPeriodText !== '시간 외' && submitBtnText) {
+                // 정규 시간인 경우 n교시 출석하기로 표시
+                submitBtnText.textContent = currentPeriodText + ' 출석하기';
+            } else {
+                // 그 외의 경우 기본 텍스트 유지
+                submitBtnText.textContent = '출석하기';
+            }
+        }
+    }
+    
+    // 교시 업데이트 시 호출할 함수
+    updateSubmitButtonText();
     
     // 모달 닫기 함수
     function closeModal() {
@@ -149,21 +168,38 @@ document.addEventListener('DOMContentLoaded', function () {
                 // 시간 외인 경우 무조건 버튼 비활성화
                 if (!isRegularHours) {
                     submitBtn.disabled = true;
+                    
                     // 4교시인 경우 특별 메시지
                     if (currentPeriodText.includes('4교시')) {
-                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i>4교시는 도서실 이용 시간이 아닙니다';
+                        // 아이콘과 텍스트 분리
+                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i><span id="submitBtnText">4교시는 도서실 이용 시간이 아닙니다</span>';
                     } else {
-                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다';
+                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i><span id="submitBtnText">지금은 도서실 이용 시간이 아닙니다</span>';
                     }
                     submitBtn.classList.remove('btn-primary');
                     submitBtn.classList.add('btn-secondary');
                 } else {
                     // 정규 시간이지만 학번이 짧은 경우
                     submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
+                    
+                    // 아이콘만 변경하고 텍스트는 유지
+                    const icon = submitBtn.querySelector('i');
+                    if (icon) {
+                        icon.className = 'fas fa-search me-2';
+                    }
+                    
+                    // 출석 정보 확인으로 텍스트 변경
+                    const textSpan = document.getElementById('submitBtnText');
+                    if (textSpan) {
+                        textSpan.textContent = '출석 정보 확인';
+                    }
+                    
                     submitBtn.classList.remove('btn-secondary');
                     submitBtn.classList.add('btn-primary');
                     if (nameInput) nameInput.value = '';
+                    
+                    // 교시 업데이트
+                    updateSubmitButtonText();
                 }
             }
         });
