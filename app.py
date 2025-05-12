@@ -867,13 +867,15 @@ def admin_add_attendance():
             student = student_data.get(student_id)
             
             if student:
-                # 출석 여부 확인
-                already_attended, attendance_date = check_attendance(student_id)
+                # 출석 여부 확인 (경고 정보 포함)
+                already_attended, attendance_date, is_warned, warning_info = check_attendance(student_id)
                 
                 student_info = {
                     'id': student_id,
                     'name': student[0],
-                    'seat': student[1]
+                    'seat': student[1],
+                    'is_warned': is_warned,
+                    'warning_info': warning_info
                 }
                 
                 attended = already_attended
@@ -915,8 +917,17 @@ def admin_add_attendance_confirm():
         flash("❌ 입력한 이름이 학번과 일치하지 않습니다.", "danger")
         return redirect('/admin_add_attendance')
     
-    # 출석 여부 확인
-    already_attended, last_attendance_date = check_attendance(student_id)
+    # 출석 여부 확인 (경고 정보 포함)
+    already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id)
+    
+    # 경고 받은 학생 정보 표시 (관리자는 등록 허용)
+    if is_warned:
+        if warning_info:
+            expiry_date = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
+            reason = warning_info.reason or "도서실 이용 규정 위반"
+            flash(f"⚠️ 이 학생은 도서실 이용이 제한된 상태입니다. (사유: {reason}, 해제일: {expiry_date}) 관리자 권한으로 출석이 가능합니다.", "warning")
+        else:
+            flash("⚠️ 이 학생은 도서실 이용이 제한된 상태입니다. 관리자 권한으로 출석이 가능합니다.", "warning")
     
     # 이미 출석했고 override 체크가 안 되어 있으면 중복 출석 방지
     if already_attended and not override:

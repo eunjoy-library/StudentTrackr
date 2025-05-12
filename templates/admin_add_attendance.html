@@ -60,6 +60,21 @@
                         </div>
                     </div>
                     
+                    {% if student_info.is_warned %}
+                    <div class="alert alert-danger">
+                        <strong>⚠️ 경고:</strong> 이 학생은 도서실 이용이 제한된 상태입니다.
+                        {% if student_info.warning_info %}
+                        <div class="mt-2">
+                            <strong>사유:</strong> {{ student_info.warning_info.reason or "도서실 이용 규정 위반" }}<br>
+                            <strong>제한 기간:</strong> {{ student_info.warning_info.warning_date.strftime('%Y-%m-%d') }} ~ {{ student_info.warning_info.expiry_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
+                        <div class="mt-2 text-muted">
+                            <small>* 관리자 권한으로 출석이 가능합니다.</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% if attended %}
                     <div class="alert alert-warning">
                         <strong>⚠️ 알림:</strong> 이 학생은 이번주에 이미 출석했습니다 (최근 출석일: {{ last_attendance_date }})
