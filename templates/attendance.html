@@ -327,9 +327,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                 modalConfirmBtn.disabled = false;
                                 modalConfirmBtn.classList.remove('btn-secondary');
                                 modalConfirmBtn.classList.add('btn-warning'); // 경고색으로 구분
-                                
-                                // 관리자만 출석 가능
-                                studentAlreadyAttended = false;
                             } else {
                                 // 일반 학생 - 출석 제한 및 메시지 표시
                                 studentInfoText.innerHTML = `
