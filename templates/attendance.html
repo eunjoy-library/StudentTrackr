@@ -109,8 +109,13 @@ document.addEventListener('DOMContentLoaded', function () {
     
     if (modalConfirmBtn) {
         modalConfirmBtn.addEventListener('click', function() {
+            console.log('모달 확인 버튼 클릭됨');
+            console.log('버튼 비활성화 상태:', this.disabled);
+            console.log('studentAlreadyAttended 현재값:', studentAlreadyAttended);
+            
             // 버튼이 비활성화되어 있거나 이미 출석한 학생이면 작동하지 않음
             if (this.disabled || studentAlreadyAttended) {
+                console.log('버튼 클릭 취소: 비활성화 또는 이미 출석한 학생');
                 closeModal();
                 return;
             }
@@ -119,7 +124,9 @@ document.addEventListener('DOMContentLoaded', function () {
             closeModal();
             
             // 폼 제출 (서버로 데이터 전송)
+            console.log('폼 제출 시작');
             form.submit();
+            console.log('폼 제출 완료');
         });
     }
     
@@ -243,6 +250,19 @@ document.addEventListener('DOMContentLoaded', function () {
                         const warningExpiry = data.warning_expiry; // 경고 만료일
                         const warningMessage = data.warning_message; // 경고 사유
                         
+                        // 디버깅 정보 콘솔에 출력
+                        console.log('학생 데이터 확인:', {
+                            학번: studentId,
+                            이름: studentName,
+                            마스킹된이름: maskedName,
+                            좌석: seatInfo,
+                            이미출석함: alreadyAttended,
+                            수용인원초과: capacityExceeded,
+                            경고여부: isWarned,
+                            경고만료일: warningExpiry,
+                            경고메시지: warningMessage
+                        });
+                        
                         // 모달 내용 설정
                         let modalContent = `
                             <div style="font-size: 20px; font-weight: bold; color: #000;">
@@ -252,6 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         
                         // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
                         studentAlreadyAttended = alreadyAttended;
+                        console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
                         
                         const studentInfoText = document.getElementById('studentInfoText');
                         if (!studentInfoText) return;
