@@ -270,6 +270,39 @@
   </div>
 </div>
 
+<!-- 날짜 기준 삭제 모달 -->
+<div class="modal fade" id="deleteBeforeDateModal" tabindex="-1" aria-labelledby="deleteBeforeDateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteBeforeDateModalLabel">
+            <i class="fas fa-calendar-times me-2"></i>특정 날짜 이전 기록 삭제
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>주의:</strong> 선택한 날짜 이전의 모든 출석 기록이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+        </div>
+        <form id="deleteBeforeDateForm" action="/delete_before_date" method="post">
+          <div class="mb-3">
+            <label for="delete_date" class="form-label">기준 날짜 선택</label>
+            <input type="date" class="form-control" id="delete_date" name="delete_date" required>
+            <div class="form-text text-muted">이 날짜 이전의 모든 출석 기록이 삭제됩니다.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBeforeDateBtn">
+          <i class="fas fa-trash-alt me-1"></i>삭제 확인
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="container pt-0">
     <div class="card shadow mb-4 mt-0">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
@@ -410,6 +443,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Bootstrap 모달 객체
     const memoModal = new bootstrap.Modal(document.getElementById('memoModal'));
+    const deleteBeforeDateModal = new bootstrap.Modal(document.getElementById('deleteBeforeDateModal'));
     
     // ID 생성 헬퍼 함수
     function createPeriodId(period) {
@@ -743,6 +777,39 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('출석 기록 삭제 중 오류 발생:', error);
             alert('출석 기록 삭제 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 날짜 기준 삭제 이벤트 처리
+    const deleteBeforeDateForm = document.getElementById('deleteBeforeDateForm');
+    const confirmDeleteBeforeDateBtn = document.getElementById('confirmDeleteBeforeDateBtn');
+    
+    if (confirmDeleteBeforeDateBtn) {
+        // 현재 날짜를 기본값으로 설정 (YYYY-MM-DD 형식)
+        const now = new Date();
+        const defaultDate = now.toISOString().split('T')[0];
+        document.getElementById('delete_date').value = defaultDate;
+        
+        confirmDeleteBeforeDateBtn.addEventListener('click', function() {
+            const dateInput = document.getElementById('delete_date');
+            
+            if (!dateInput.value) {
+                alert('삭제할 기준 날짜를 선택해주세요.');
+                return;
+            }
+            
+            // 날짜가 유효한지 확인
+            const selectedDate = new Date(dateInput.value);
+            if (isNaN(selectedDate.getTime())) {
+                alert('올바른 날짜 형식이 아닙니다. (YYYY-MM-DD)');
+                return;
+            }
+            
+            // 사용자 확인
+            const formattedDate = dateInput.value;
+            if (confirm(`정말로 ${formattedDate} 이전의 모든 출석 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+                deleteBeforeDateForm.submit();
+            }
         });
     }
 });
