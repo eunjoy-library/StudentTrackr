@@ -77,36 +77,18 @@
     <!-- 화면에 항상 표시되는 시간 요소 -->
     <div id="fixedTimeDisplay" class="fixed-time-display" data-nohide="true"></div>
     
-    <div class="container my-4">
-        {% block content %}{% endblock %}
-        
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="mt-3">
-                    {% for category, message in messages %}
-                        {% if category == 'message' %}
-                            {% set category = 'info' %}
-                        {% endif %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-        
-        {% if session.get('admin') and request.path != '/' and request.path != '/attendance' %}
-        <div class="mt-4 border-top pt-3">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0">관리자 메뉴</h5>
+    {% if session.get('admin') and request.path != '/' and request.path != '/attendance' %}
+    <!-- 상단 관리자 메뉴 -->
+    <div class="container-fluid bg-dark py-2 mb-4" style="margin-top: 40px;">
+        <div class="container">
+            <div class="card border-0 bg-transparent">
+                <div class="card-header bg-dark text-white border-0 pb-0">
+                    <h5 class="mb-1">관리자 메뉴</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="row m-0">
                         <!-- 첫 번째 줄: 주요 보기 옵션 -->
-                        <div class="col-12 p-0">
+                        <div class="col-12 p-0 mb-2">
                             <div class="list-group list-group-horizontal-md rounded-0">
                                 <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-center {% if request.path == '/by_period' %}active{% endif %}" href="/by_period">
                                     <i class="fas fa-clock me-2"></i> 교시별 보기
@@ -144,7 +126,28 @@
                 </div>
             </div>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="container my-4">
+        {% block content %}{% endblock %}
+        
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mt-3">
+                    {% for category, message in messages %}
+                        {% if category == 'message' %}
+                            {% set category = 'info' %}
+                        {% endif %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
         
         <footer class="mt-5 border-top pt-3 text-center text-muted">
             <small>&copy; {{ current_year }} 도서실 출석 시스템 | <span id="hiddenAdminLink" style="color: inherit; cursor: default; user-select: none;">●</span></small>
