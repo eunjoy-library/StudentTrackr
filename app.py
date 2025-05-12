@@ -493,6 +493,8 @@ def attendance():
                 flash("⚠️ 이번 주에 이미 출석했습니다. 추가 출석은 관리자 메뉴의 '추가 출석하기'에서 진행해주세요.", "warning")
             else:
                 flash("⚠️ 이번 주에 이미 출석하셨습니다. 다음 주에 다시 와주세요.", "warning")
+            # 출석 거부 강화 - 바로 리다이렉트
+            return redirect(url_for('attendance'))
         else:
             seat = student_info[1]
             if save_attendance(student_id, name, seat):
