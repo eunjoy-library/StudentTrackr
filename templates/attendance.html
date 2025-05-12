@@ -236,6 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(`/lookup_name?student_id=${studentId}`)
                 .then(response => response.json())
                 .then(data => {
+                    // API 응답 전체를 콘솔에 출력
+                    console.log('API 응답 원본:', data);
                     if (data.success) {
                         // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
                         if (nameInput) nameInput.value = data.name;
