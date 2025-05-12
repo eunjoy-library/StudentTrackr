@@ -351,22 +351,23 @@ def check_attendance(student_id, admin_override=False):
                     # 출석날짜가 이번 주 월요일 이후이고, 금요일(weekday=4) 이하인 경우만 카운트
                     if attend_time >= this_week_monday and attend_time.weekday() <= 4:
                         weekly_attendance_count += 1
-                        
-                        # 이번 주(월~금)에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
-                        if weekly_attendance_count >= 1 and not session.get('admin'):
-                            return True, last_attendance_date, False, None
-                        
-                        # 이번 주(월~금)에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
-                        if weekly_attendance_count >= 2:
-                            return True, last_attendance_date, False, None
                             
                 except ValueError:
                     continue
-                    
+        
+        # 모든 출석 기록을 확인한 후 주간 출석 횟수에 따라 출석 제한 여부 결정
+        # 이번 주에 한 번 이상 출석했고, 관리자 로그인이 아닌 경우
+        if weekly_attendance_count >= 1 and not session.get('admin'):
+            return True, last_attendance_date, False, None
+        
+        # 이번 주에 두 번 이상 출석한 경우 (관리자도 2번 초과는 불가)
+        if weekly_attendance_count >= 2:
+            return True, last_attendance_date, False, None
         # 일주일 이내 출석은 없지만, 과거 출석 기록이 있는 경우
         if last_attendance_date:
             return False, last_attendance_date, False, None
             
+        # 출석 기록이 없는 경우    
         return False, None, False, None
 
 def load_attendance():
