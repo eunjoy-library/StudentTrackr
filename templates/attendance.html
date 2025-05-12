@@ -180,7 +180,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     const maskedName = maskName(studentName); // 마스킹된 이름
                     const seatInfo = data.seat ? data.seat : '정보 없음';
                     const alreadyAttended = data.already_attended;
-                    const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부 (백엔드에서 받을 예정)
+                    const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부
+                    const isWarned = data.is_warned; // 경고 여부
+                    const warningExpiry = data.warning_expiry; // 경고 만료일
+                    const warningMessage = data.warning_message; // 경고 사유
                     
                     // 확인 버튼 참조
                     const confirmBtn = document.getElementById('modalConfirmBtn');
@@ -192,7 +195,22 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div>공강실 좌석번호: ${seatInfo}</div>
                         </div>`;
                     
-                    if (capacityExceeded) {
+                    if (isWarned) {
+                        // 경고 받은 학생인 경우
+                        document.getElementById('studentInfoText').innerHTML = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                                도서실 이용이 제한된 상태입니다.<br>
+                                사유: ${warningMessage || '도서실 이용 규정 위반'}<br>
+                                해제일: ${warningExpiry || '관리자에게 문의하세요'}
+                            </div>
+                            ${modalContent}
+                        `;
+                        
+                        // 확인 버튼 비활성화
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.add('btn-secondary');
+                        confirmBtn.classList.remove('btn-primary');
+                    } else if (capacityExceeded) {
                         // 수용 인원 초과 시
                         document.getElementById('studentInfoText').innerHTML = `
                             <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">

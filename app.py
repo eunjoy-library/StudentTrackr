@@ -935,6 +935,69 @@ def admin_add_attendance_confirm():
     
     return redirect('/admin_add_attendance')
 
+@app.route('/admin/warnings')
+def admin_warnings():
+    """경고 학생 관리 페이지 (관리자만 접근 가능)"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    # 모든 경고 목록 조회
+    warnings = Warning.query.order_by(Warning.warning_date.desc()).all()
+    
+    return render_template(
+        'admin_warnings.html',
+        warnings=warnings,
+        now=datetime.utcnow()  # 현재 시간 전달 (만료 여부 확인용)
+    )
+
+@app.route('/admin/warnings/add', methods=['POST'])
+def add_warning():
+    """학생 경고 추가 처리"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    student_id = request.form.get('student_id', '').strip()
+    student_name = request.form.get('student_name', '').strip()
+    days = int(request.form.get('days', 30))
+    reason = request.form.get('reason', '').strip()
+    
+    if not student_id or not student_name:
+        flash("학번과 이름을 모두 입력해주세요.", "danger")
+        return redirect('/admin/warnings')
+        
+    # 유효한 학생인지 확인
+    student_data = load_student_data()
+    if student_id not in student_data:
+        flash("존재하지 않는 학번입니다.", "danger")
+        return redirect('/admin/warnings')
+        
+    # 경고 추가
+    warning = Warning.add_warning(student_id, student_name, days, reason)
+    
+    if warning:
+        flash(f"{student_name}({student_id}) 학생에게 {days}일간의 도서실 이용 제한이 추가되었습니다.", "success")
+    else:
+        flash("경고 추가 중 오류가 발생했습니다.", "danger")
+        
+    return redirect('/admin/warnings')
+
+@app.route('/admin/warnings/remove/<int:warning_id>', methods=['POST'])
+def remove_warning(warning_id):
+    """학생 경고 해제 처리"""
+    if not session.get('admin'):
+        flash("관리자 로그인이 필요합니다.", "danger")
+        return redirect('/admin')
+        
+    # 경고 해제
+    if Warning.remove_warning(warning_id):
+        flash("경고가 해제되었습니다.", "success")
+    else:
+        flash("경고 해제 중 오류가 발생했습니다.", "danger")
+        
+    return redirect('/admin/warnings')
+
 @app.route('/logout')
 def logout():
     """Logout from admin"""

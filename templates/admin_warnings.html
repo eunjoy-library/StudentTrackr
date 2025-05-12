@@ -1,0 +1,116 @@
+{% extends 'layout.html' %}
+
+{% block title %}경고 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>도서실 이용 제한 관리</h2>
+    <p class="text-muted">경고를 받은 학생은 일정 기간 동안 도서실 이용이 제한됩니다.</p>
+
+    <!-- 경고 추가 폼 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>학생 경고 추가</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="/admin/warnings/add">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="student_id" class="form-label">학번</label>
+                        <input type="text" class="form-control" id="student_id" name="student_id" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="student_name" class="form-label">이름</label>
+                        <input type="text" class="form-control" id="student_name" name="student_name" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="days" class="form-label">제한 기간(일)</label>
+                        <input type="number" class="form-control" id="days" name="days" value="30" min="1" max="180" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="reason" class="form-label">사유</label>
+                    <input type="text" class="form-control" id="reason" name="reason" placeholder="경고 사유를 입력하세요">
+                </div>
+                <button type="submit" class="btn btn-danger">경고 추가</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 경고 목록 -->
+    <div class="card">
+        <div class="card-header">
+            <h5>경고 목록</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>학번</th>
+                            <th>이름</th>
+                            <th>경고일</th>
+                            <th>만료일</th>
+                            <th>사유</th>
+                            <th>상태</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warning in warnings %}
+                        <tr class="{{ 'table-danger' if warning.is_active else 'table-secondary' }}">
+                            <td>{{ warning.student_id }}</td>
+                            <td>{{ warning.student_name }}</td>
+                            <td>{{ warning.warning_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ warning.expiry_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ warning.reason or '도서실 이용 규정 위반' }}</td>
+                            <td>
+                                {% if warning.is_active %}
+                                    {% if warning.expiry_date > now %}
+                                        <span class="badge bg-danger">활성</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">만료됨</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">해제됨</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if warning.is_active %}
+                                <form method="POST" action="/admin/warnings/remove/{{ warning.id }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">경고 해제</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">경고 내역이 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 학번 입력 시 자동으로 이름 조회
+    document.getElementById('student_id').addEventListener('change', function() {
+        const studentId = this.value.trim();
+        if (studentId) {
+            fetch(`/lookup_name?student_id=${studentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('student_name').value = data.name;
+                    } else {
+                        document.getElementById('student_name').value = '';
+                        alert('학번을 찾을 수 없습니다.');
+                    }
+                });
+        }
+    });
+</script>
+{% endblock %}

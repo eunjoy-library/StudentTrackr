@@ -140,6 +140,11 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/admin/warnings' %}active{% endif %}" href="/admin/warnings">
+                                    <i class="fas fa-exclamation-triangle"></i> 경고 관리
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="/logout">
                                     <i class="fas fa-sign-out-alt"></i> 로그아웃
                                 </a>
