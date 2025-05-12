@@ -1,0 +1,62 @@
+from datetime import datetime, timedelta
+import os
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+db = SQLAlchemy(model_class=Base)
+
+
+class Warning(db.Model):
+    """경고 받은 학생 정보 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.String(20), nullable=False, index=True)
+    student_name = db.Column(db.String(100), nullable=False)
+    warning_date = db.Column(db.DateTime, default=datetime.utcnow)
+    expiry_date = db.Column(db.DateTime, nullable=False)  # 경고 만료일
+    reason = db.Column(db.Text, nullable=True)  # 경고 사유
+    is_active = db.Column(db.Boolean, default=True)  # 경고 활성화 여부
+
+    @staticmethod
+    def is_student_warned(student_id):
+        """학생이 현재 유효한 경고를 받았는지 확인"""
+        now = datetime.utcnow()
+        warning = Warning.query.filter(
+            Warning.student_id == student_id,
+            Warning.expiry_date > now,
+            Warning.is_active == True
+        ).first()
+        return warning is not None, warning
+
+    @staticmethod
+    def add_warning(student_id, student_name, days=30, reason=None):
+        """학생에게 경고 추가 (기본 30일 경고)"""
+        now = datetime.utcnow()
+        expiry_date = now + timedelta(days=days)
+        
+        warning = Warning(
+            student_id=student_id,
+            student_name=student_name,
+            warning_date=now,
+            expiry_date=expiry_date,
+            reason=reason,
+            is_active=True
+        )
+        
+        db.session.add(warning)
+        db.session.commit()
+        return warning
+
+    @staticmethod
+    def remove_warning(warning_id):
+        """경고 제거 (활성화 상태만 변경)"""
+        warning = Warning.query.get(warning_id)
+        if warning:
+            warning.is_active = False
+            db.session.commit()
+            return True
+        return False

@@ -16,6 +16,24 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "fallback_secret_key_for_development")
 
+# 데이터베이스 설정
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///attendance.db")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# 데이터베이스 초기화 (models.py에서 db 객체 가져오기)
+from models import db, Warning
+
+# 데이터베이스 초기화
+db.init_app(app)
+
+# 데이터베이스 테이블 생성
+with app.app_context():
+    db.create_all()
+
 # Add datetime functions to templates
 @app.context_processor
 def inject_now():
@@ -257,18 +275,28 @@ def load_student_data():
 
 def check_attendance(student_id, admin_override=False):
     """
-    Check if the student has already attended this week
-    Returns (True, last_attendance_date) if already attended, (False, None) otherwise
+    Check if the student has already attended this week or has an active warning
+    Returns tuple:
+      (already_attended, last_attendance_date, is_warned, warning_info)
+      
+    이미 출석했거나 경고를 받은 학생은 출석을 제한함
     
     admin_override: 관리자 수동 추가 시 체크를 건너뛰는 옵션
     """
-    # 관리자 수동 추가인 경우 체크 건너뛰기
+    # 경고 여부 확인
+    is_warned, warning_info = Warning.is_student_warned(student_id)
+    
+    # 관리자 수동 추가인 경우 체크 건너뛰기 (경고도 무시)
     if admin_override:
-        return False, None
+        return False, None, False, None
         
-    # '3'으로 시작하는 학번은 항상 출석 가능
+    # '3'으로 시작하는 학번은 항상 출석 가능 (경고도 무시)
     if student_id.startswith('3'):
-        return False, None
+        return False, None, False, None
+        
+    # 경고 받은 경우 출석 차단
+    if is_warned and not admin_override:
+        return False, None, True, warning_info
         
     if not os.path.exists(FILENAME):
         return False, None
