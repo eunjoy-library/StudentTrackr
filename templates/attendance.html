@@ -102,7 +102,13 @@ document.addEventListener('DOMContentLoaded', function () {
             // 시간 외인 경우 무조건 버튼 비활성화
             if (!isRegularHours) {
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
+                // 4교시인 경우 특별 메시지
+                const periodNum = document.getElementById("currentPeriod").textContent;
+                if (periodNum.includes("4교시")) {
+                    submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>4교시는 도서실 이용 시간이 아닙니다`;
+                } else {
+                    submitBtn.innerHTML = `<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다`;
+                }
                 submitBtn.classList.remove("btn-primary");
                 submitBtn.classList.add("btn-secondary");
             } else {
@@ -316,6 +322,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (current >= start && current < end) {
                 periodNumber = i + 1;
+                
+                // 4교시(인덱스 3)는 도서실 이용 불가
+                if (periodNumber === 4) {
+                    period = '시간 외';
+                    currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+                    currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
+                    break;
+                }
+                
                 period = `${periodNumber}교시`;
                 currentPeriodStartTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
                 currentPeriodEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;

@@ -226,7 +226,7 @@ initialize_files()
 def get_current_period():
     """
     Determine the current class period based on current time (Korean time)
-    Returns period number (1-10) or 0 if outside scheduled periods
+    Returns period number (1-10) or 0 if outside scheduled periods or during 4th period
     """
     # 한국 시간 기준으로 현재 시간 가져오기
     now = datetime.now(KST).time()
@@ -234,6 +234,9 @@ def get_current_period():
         start = datetime.strptime(f"{start_h}:{start_m}", "%H:%M").time()
         end = datetime.strptime(f"{end_h}:{end_m}", "%H:%M").time()
         if start <= now < end:
+            # 4교시는 도서실 이용 불가능 시간으로 설정
+            if period == 4:
+                return 0  # 4교시는 이용 불가
             return period
     return 0  # 교시가 아닌 시간일 경우
     
