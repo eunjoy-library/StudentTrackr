@@ -454,8 +454,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     ${modalContent}
                                 `;
                                 
-                                // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
-                                setTimeout(playErrorSound, 100);
+                                // 에러 소리 재생
+                                playErrorSound();
                                 console.log('이미 출석한 학생 에러 소리 재생 예약');
                                 
                                 // 확인 버튼 비활성화
