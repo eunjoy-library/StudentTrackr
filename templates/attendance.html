@@ -372,7 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 // 일반 학생 - 출석 제한 및 메시지 표시
                                 studentInfoText.innerHTML = `
                                     <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                        이미 이번주에 출석하였습니다.
+                                        이미 이번주에 출석하였습니다.<br>
+                                        4층 공강실로 올라가주세요!
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
                                     </div>
                                     ${modalContent}
