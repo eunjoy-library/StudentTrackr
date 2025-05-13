@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
         oscillator.stop(now + startDelay + duration);
     }
     
-    // 실패 소리 재생 - 중간 음역대의 경고음
+    // 실패 소리 재생 - "삐비빕" 경고음으로 변경
     function playErrorSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -208,10 +208,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // 첫 번째 톤 (약간 더 높게)
-            playErrorTone(261.63, 0, 0.2); // C4 음
-            // 두 번째 톤 (약간 낮음)
-            playErrorTone(220.00, 0.2, 0.3); // A3 음
+            // 삐-비-빕 경고 패턴 (높은 음에서 낮은 음으로 떨어지는 패턴)
+            playErrorTone(880.00, 0, 0.15, 'square'); // 첫 번째 높은 "삐" 소리 (A5) - 사각파로 날카로운 소리
+            playErrorTone(587.33, 0.15, 0.15, 'square'); // 두 번째 중간 "비" 소리 (D5) - 사각파
+            playErrorTone(440.00, 0.3, 0.2, 'square'); // 세 번째 낮은 "빕" 소리 (A4) - 사각파
             
             console.log('실패 소리 재생됨');
         } catch (e) {
@@ -220,14 +220,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // 실패 소리의 각 톤 재생 함수
-    function playErrorTone(frequency, startDelay, duration) {
-        // 오실레이터 생성 (삼각파)
+    function playErrorTone(frequency, startDelay, duration, waveType = 'sawtooth') {
+        // 오실레이터 생성
         const oscillator = audioContext.createOscillator();
-        oscillator.type = 'sawtooth'; // 톱니파 - 부드러운 경고음
+        oscillator.type = waveType; // 파형 타입 설정
         
         // 게인 노드 생성
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.15; // 볼륨 낮춤
+        gainNode.gain.value = 0.25; // 약간 더 큰 볼륨
         
         // 오실레이터 연결
         oscillator.connect(gainNode);
