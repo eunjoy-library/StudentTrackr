@@ -854,27 +854,36 @@ def delete_records():
         if not records_to_delete:
             return jsonify({'success': False, 'error': '삭제할 기록이 선택되지 않았습니다.'}), 400
         
-        # 1. 데이터베이스에서 기록 삭제
+        # 1. 데이터베이스에서 학생 기록 삭제 처리
         db_deleted_count = 0
-        for delete_key in records_to_delete:
-            # delete_key 형식은 "2025-05-13 14:30:45_20210123" (출석일_학번)
-            try:
-                if '_' in delete_key:
-                    datetime_str, student_id = delete_key.split('_', 1)
-                    
+        
+        # 먼저 JSON 형식으로 받은 records_to_delete 파싱
+        # records_set는 아래에서 생성되므로, 여기서는 데이터베이스만 처리
+        try:
+            for record in records_to_delete:
+                # JSON 형식으로 받은 경우 (교시별 보기 페이지에서 삭제 시)
+                student_id = record.get('student_id')
+                date_str = record.get('date')
+                
+                if student_id and date_str:
                     # 해당 학생의 해당 날짜 출석 기록 찾기
-                    attendances = Attendance.query.filter_by(student_id=student_id).all()
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    next_day = date_obj + timedelta(days=1)
                     
+                    # 해당 날짜의 해당 학생 기록 모두 조회
+                    attendances = Attendance.query.filter(
+                        Attendance.student_id == student_id,
+                        Attendance.date >= date_obj,
+                        Attendance.date < next_day
+                    ).all()
+                    
+                    # 각 기록 삭제
                     for attendance in attendances:
-                        # 날짜/시간 비교 (문자열 형식이 다를 수 있으므로 날짜 부분만 비교)
-                        record_date_str = attendance.date.strftime('%Y-%m-%d')
-                        if datetime_str.startswith(record_date_str):
-                            # 데이터베이스에서 삭제
-                            Attendance.delete_attendance(attendance.id)
-                            db_deleted_count += 1
-                            logging.info(f"데이터베이스에서 기록 삭제됨: {delete_key}")
-            except Exception as db_error:
-                logging.error(f"데이터베이스 기록 삭제 중 오류: {db_error}")
+                        Attendance.delete_attendance(attendance.id)
+                        db_deleted_count += 1
+                        logging.info(f"데이터베이스에서 기록 삭제됨: 학번={student_id}, 날짜={date_str}")
+        except Exception as db_error:
+            logging.error(f"데이터베이스 기록 삭제 중 오류: {db_error}")
         
         # 2. CSV 파일에서도 기록 삭제 (이전 시스템과의 호환성 유지)
         if not os.path.exists(FILENAME):
@@ -954,12 +963,16 @@ def delete_records():
             logging.error(f"Record count mismatch after deletion: expected {len(filtered_records)}, got {len(check_records)}")
             return jsonify({'success': False, 'error': '삭제 후 기록 수가 일치하지 않습니다.'}), 500
             
-        deleted_count = len(all_records) - len(filtered_records)
-        logging.info(f"Successfully deleted {deleted_count} records")
+        csv_deleted_count = len(all_records) - len(filtered_records)
+        total_deleted = db_deleted_count + csv_deleted_count
+        
+        logging.info(f"Successfully deleted {total_deleted} records (DB: {db_deleted_count}, CSV: {csv_deleted_count})")
         return jsonify({
             'success': True, 
-            'message': f'{deleted_count}개의 기록이 삭제되었습니다.',
-            'deleted_count': deleted_count
+            'message': f'{total_deleted}개의 기록이 삭제되었습니다 (DB: {db_deleted_count}, CSV: {csv_deleted_count}).',
+            'deleted_count': total_deleted,
+            'db_deleted': db_deleted_count,
+            'csv_deleted': csv_deleted_count
         })
     
     except Exception as e:
