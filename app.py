@@ -393,7 +393,7 @@ def load_attendance():
 
 def save_attendance(student_id, name, seat):
     """
-    Save attendance record to CSV files (with Korean time)
+    Save attendance record to database and CSV files (with Korean time)
     """
     file_exists = os.path.exists(FILENAME)
     # 한국 시간 기준으로 현재 날짜와 시간 저장
@@ -412,6 +412,10 @@ def save_attendance(student_id, name, seat):
     }
 
     try:
+        # 1. 데이터베이스에 출석 기록 저장
+        Attendance.add_attendance(student_id, name, seat, period_text)
+        
+        # 2. CSV 파일에도 병행 저장 (이전 시스템과의 호환성 유지)
         # Define fields in the proper order
         fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
         
