@@ -127,6 +127,33 @@ document.addEventListener('DOMContentLoaded', function () {
         customModal.style.display = 'none';
     }
     
+    // 소리 재생 함수 - 브라우저 자동 재생 정책을 고려하여 수정
+    function playSound(soundId) {
+        try {
+            const sound = document.getElementById(soundId);
+            if (sound) {
+                // 볼륨 설정 (0.0 ~ 1.0)
+                sound.volume = 0.5;
+                
+                // 소리 재생 시도
+                var playPromise = sound.play();
+                
+                // 자동 재생 정책으로 인한 오류 처리
+                if (playPromise !== undefined) {
+                    playPromise.then(_ => {
+                        // 재생 성공
+                        console.log(`${soundId} 재생 성공`);
+                    }).catch(error => {
+                        // 자동 재생 정책으로 인한 오류 처리
+                        console.log(`${soundId} 재생 실패: ${error}`);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`소리 재생 오류: ${error}`);
+        }
+    }
+    
     // 모달 버튼 이벤트 리스너
     if (modalCancelBtn) {
         modalCancelBtn.addEventListener('click', closeModal);
@@ -144,10 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 이미 출석한 학생인 경우 에러 소리 재생
                 if (studentAlreadyAttended) {
-                    const errorSound = document.getElementById('errorSound');
-                    if (errorSound) {
-                        errorSound.play();
-                    }
+                    playSound('errorSound');
                 }
                 
                 closeModal();
@@ -158,10 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
             closeModal();
             
             // 성공 소리 재생
-            const successSound = document.getElementById('successSound');
-            if (successSound) {
-                successSound.play();
-            }
+            playSound('successSound');
             
             // 폼 제출 (서버로 데이터 전송)
             console.log('폼 제출 시작');
