@@ -170,32 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 실패 소리의 각 톤 재생 함수
-    function playErrorTone(frequency, startDelay, duration, waveType = 'sawtooth') {
-        // 오실레이터 생성
-        const oscillator = audioContext.createOscillator();
-        oscillator.type = waveType; // 파형 타입 설정
-        
-        // 게인 노드 생성
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.25; // 약간 더 큰 볼륨
-        
-        // 오실레이터 연결
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // 주파수 설정 (낮은 주파수)
-        const now = audioContext.currentTime;
-        oscillator.frequency.setValueAtTime(frequency, now + startDelay);
-        
-        // 사운드 볼륨 변화 설정
-        gainNode.gain.setValueAtTime(0.15, now + startDelay);
-        gainNode.gain.linearRampToValueAtTime(0, now + startDelay + duration);
-        
-        // 소리 재생 시작
-        oscillator.start(now + startDelay);
-        oscillator.stop(now + startDelay + duration);
-    }
+    // HTML 오디오 요소로 변경했으므로 더 이상 필요하지 않습니다.
     
     // 소리 종류에 따라 적절한 소리 재생
     function playSound(type) {
