@@ -14,7 +14,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from dotenv import load_dotenv
 
 # 내부 모듈
-from models import db, Warning
+from models import db, Warning, Attendance
 
 # ================== [환경 변수 로드] ==================
 

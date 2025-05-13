@@ -11,6 +11,69 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 
 
+class Attendance(db.Model):
+    """학생 출석 기록 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.String(20), nullable=False, index=True)
+    name = db.Column(db.String(50), nullable=False)
+    seat = db.Column(db.String(20), nullable=True)
+    period = db.Column(db.String(20), nullable=True)
+    date = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    @staticmethod
+    def add_attendance(student_id, name, seat, period):
+        """출석 기록 추가"""
+        attendance = Attendance()
+        attendance.student_id = student_id
+        attendance.name = name
+        attendance.seat = seat
+        attendance.period = period
+        
+        db.session.add(attendance)
+        db.session.commit()
+        return attendance
+    
+    @staticmethod
+    def get_attendances_by_student(student_id):
+        """학생 ID별 모든 출석 기록 조회"""
+        return Attendance.query.filter_by(student_id=student_id).order_by(Attendance.date.desc()).all()
+    
+    @staticmethod
+    def get_recent_attendance(student_id, days=7):
+        """최근 특정 일수 이내의 출석 기록 조회"""
+        now = datetime.utcnow()
+        recent_date = now - timedelta(days=days)
+        return Attendance.query.filter(
+            Attendance.student_id == student_id,
+            Attendance.date >= recent_date
+        ).order_by(Attendance.date.desc()).first()
+    
+    @staticmethod
+    def get_attendances_by_period(period, limit=50):
+        """교시별 출석 기록 조회"""
+        return Attendance.query.filter_by(period=period).order_by(Attendance.date.desc()).limit(limit).all()
+    
+    @staticmethod
+    def get_today_attendances():
+        """오늘의 출석 기록 조회"""
+        today = datetime.utcnow().date()
+        tomorrow = today + timedelta(days=1)
+        return Attendance.query.filter(
+            Attendance.date >= today,
+            Attendance.date < tomorrow
+        ).order_by(Attendance.date.desc()).all()
+    
+    @staticmethod
+    def delete_attendance(attendance_id):
+        """특정 출석 기록 삭제"""
+        attendance = Attendance.query.get(attendance_id)
+        if attendance:
+            db.session.delete(attendance)
+            db.session.commit()
+            return True
+        return False
+
+
 class Warning(db.Model):
     """경고 받은 학생 정보 모델"""
     id = db.Column(db.Integer, primary_key=True)
@@ -38,14 +101,13 @@ class Warning(db.Model):
         now = datetime.utcnow()
         expiry_date = now + timedelta(days=days)
         
-        warning = Warning(
-            student_id=student_id,
-            student_name=student_name,
-            warning_date=now,
-            expiry_date=expiry_date,
-            reason=reason,
-            is_active=True
-        )
+        warning = Warning()
+        warning.student_id = student_id
+        warning.student_name = student_name
+        warning.warning_date = now
+        warning.expiry_date = expiry_date
+        warning.reason = reason
+        warning.is_active = True
         
         db.session.add(warning)
         db.session.commit()

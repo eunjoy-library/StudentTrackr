@@ -152,36 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 성공 소리의 각 음표 재생 함수
-    function playSuccessNote(frequency, startDelay, duration, waveType) {
-        // 오실레이터 생성
-        const oscillator = audioContext.createOscillator();
-        oscillator.type = waveType || 'sine'; // 파형 타입 설정
-        
-        // 게인 노드 생성 (볼륨 조절용)
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.3; // 볼륨 (0-1)
-        
-        // 오실레이터 연결
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // 주파수 설정
-        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + startDelay);
-        
-        // 사운드 볼륨 변화 설정 (더 명확한 ADSR 효과)
-        const now = audioContext.currentTime;
-        gainNode.gain.setValueAtTime(0, now + startDelay); // 시작 볼륨
-        gainNode.gain.linearRampToValueAtTime(0.3, now + startDelay + 0.03); // 빠른 Attack
-        gainNode.gain.setValueAtTime(0.3, now + startDelay + duration - 0.1); // Sustain
-        gainNode.gain.linearRampToValueAtTime(0, now + startDelay + duration); // Release
-        
-        // 지정된 시간 후 소리 재생 시작
-        oscillator.start(now + startDelay);
-        
-        // 지정된 시간 후 소리 종료
-        oscillator.stop(now + startDelay + duration);
-    }
+    // HTML 오디오 요소 사용으로 변경된 코드로, 이전 함수는 더 이상 필요하지 않습니다.
     
     // 실패 소리 재생 - "삐비빕" 경고음으로 변경
     function playErrorSound() {
