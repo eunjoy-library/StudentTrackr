@@ -15,6 +15,14 @@
     </div>
 </div>
 
+<!-- 오디오 요소들 (숨김) -->
+<audio id="successSound" preload="auto" style="display: none;">
+    <source src="/static/sounds/success.mp3" type="audio/mpeg">
+</audio>
+<audio id="errorSound" preload="auto" style="display: none;">
+    <source src="/static/sounds/error.mp3" type="audio/mpeg">
+</audio>
+
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow">
@@ -99,15 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const customModal = document.getElementById('customModal');
     const currentPeriodElement = document.getElementById('currentPeriod');
     
-    // 페이지 로드 시 오디오 초기화 시도
-    initAudio();
-    
-    // 사용자 상호작용 시 오디오 초기화 (백업으로 유지)
-    window.addEventListener('click', function() {
-        if (!audioContext) {
-            initAudio();
-        }
-    });
+    // 오디오 요소 사용을 위한 함수로 변경 - WebAudio API는 더 이상 사용하지 않음
     
     // 학생이 이미 출석했는지 여부를 저장하는 상태
     let studentAlreadyAttended = false;
@@ -149,21 +149,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 성공 소리 재생 - 중간 음역대의 "띵동" 소리
+    // 성공 소리 재생 - HTML 오디오 요소 사용
     function playSuccessSound() {
-        if (!audioContext) {
-            console.log('오디오 컨텍스트가 초기화되지 않았습니다');
-            return;
-        }
-        
         try {
-            // "띵" - 조금 더 높은 음 (C5)
-            playSuccessNote(523.25, 0, 0.15, 'triangle'); // C5 - 삼각파로 명확한 소리
-            
-            // "동" - 약간 더 낮은 음 (G4)
-            playSuccessNote(392.00, 0.15, 0.3, 'sine'); // G4 - 사인파로 부드러운 소리
-            
-            console.log('띵동 소리 재생됨');
+            const successSound = document.getElementById('successSound');
+            if (successSound) {
+                successSound.currentTime = 0; // 시작 위치 초기화
+                successSound.play();
+                console.log('띵동 소리 재생됨');
+            } else {
+                console.error('성공 소리 요소를 찾을 수 없습니다');
+            }
         } catch (e) {
             console.error('소리 재생 오류:', e);
         }

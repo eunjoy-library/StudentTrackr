@@ -1,48 +1,62 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify, after_this_request, send_from_directory
-from datetime import datetime, timedelta
-import pandas as pd
-import csv
+# ================== [IMPORTS] ==================
+
+# 표준 라이브러리
 import os
+import csv
 import logging
-import pytz
+from datetime import datetime, timedelta
 from collections import Counter
 
-# 한국 시간대 설정
-KST = pytz.timezone('Asia/Seoul')
+# 외부 라이브러리
+import pandas as pd
+import pytz
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify, after_this_request, send_from_directory
+from dotenv import load_dotenv
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
+# 내부 모듈
+from models import db, Warning
+
+# ================== [환경 변수 로드] ==================
+
+load_dotenv()  # .env 파일에서 환경 변수 읽어오기
+db_host = os.getenv("DB_HOST")
+print("DB_HOST:", db_host)  # 개발 중 확인용 (운영 시 제거 가능)
+
+# ================== [Flask 객체 생성] ==================
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "fallback_secret_key_for_development")
 
-# 데이터베이스 설정
+# ================== [앱 설정] ==================
+
+app.secret_key = os.environ.get("SESSION_SECRET", "fallback")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///attendance.db")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# 데이터베이스 초기화 (models.py에서 db 객체 가져오기)
-from models import db, Warning
+# ================== [DB 초기화 및 생성] ==================
 
-# 데이터베이스 초기화
 db.init_app(app)
-
-# 데이터베이스 테이블 생성
 with app.app_context():
     db.create_all()
 
-# Add datetime functions to templates
+# ================== [한국 시간대 설정 및 로그 설정] ==================
+
+KST = pytz.timezone('Asia/Seoul')
+logging.basicConfig(level=logging.DEBUG)
+
+# ================== [템플릿 전역 함수 주입] ==================
+
 @app.context_processor
 def inject_now():
-    # 항상 한국 시간을 사용하여 현재 시간 및 연도 반환
     now = datetime.now(KST).replace(tzinfo=None)
     return {
         'now': lambda: now,
         'current_year': now.year
     }
+
 
 # File configurations
 FILENAME = 'attendance.csv'
