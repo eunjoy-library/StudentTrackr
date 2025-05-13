@@ -222,9 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            // 시작 및 종료 시간 설정 (길게 삐-)
+            // 시작 및 종료 시간 설정 (짧게 삐-)
             oscillator.start(currentTime);
-            oscillator.stop(currentTime + 0.5); // 0.5초 동안 단일음 재생
+            oscillator.stop(currentTime + 0.4); // 0.4초 동안 단일음 재생
             
             console.log('실패 소리 재생됨 (삐-)');
         } catch (e) {
