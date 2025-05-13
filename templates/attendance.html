@@ -195,8 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // HTML 오디오 요소 사용으로 변경된 코드로, 이전 함수는 더 이상 필요하지 않습니다.
-    
+
     // 실패 소리 재생 (삐비빕) - A5 → D5 → A4 주파수 (880Hz → 587Hz → 440Hz)
     function playErrorSound() {
         try {
@@ -279,17 +278,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 이미 출석한 학생인 경우 에러 소리 재생
                 if (studentAlreadyAttended) {
-                    // 브라우저의 자동 재생 정책 때문에 사용자 상호작용을 확보한 상태에서 직접 play
-                    const errorSound = document.getElementById('errorSound');
-                    if (errorSound) {
-                        errorSound.currentTime = 0;
-                        const playPromise = errorSound.play();
-                        if (playPromise !== undefined) {
-                            playPromise.catch(error => {
-                                console.error('오류 소리 재생 실패:', error);
-                            });
-                        }
-                    }
+                    // Web Audio API를 사용하여 실패 소리 재생
+                    playErrorSound();
                 }
                 
                 closeModal();
@@ -299,17 +289,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // 모달 닫기
             closeModal();
             
-            // 성공 소리 재생 - 직접 재생
-            const successSound = document.getElementById('successSound');
-            if (successSound) {
-                successSound.currentTime = 0;
-                const playPromise = successSound.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.error('성공 소리 재생 실패:', error);
-                    });
-                }
-            }
+            // 성공 소리 재생 - Web Audio API 사용
+            playSuccessSound();
             
             // 폼 제출 (서버로 데이터 전송)
             console.log('폼 제출 시작');
