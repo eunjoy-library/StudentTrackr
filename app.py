@@ -268,16 +268,37 @@ def get_current_period_attendance_count():
     now = datetime.now(KST)
     today = now.strftime('%Y-%m-%d')
     
-    if not os.path.exists(FILENAME):
-        return 0
-        
+    # 1. 데이터베이스에서 오늘의 현재 교시 출석 수 확인
     count = 0
-    with open(FILENAME, newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            attendance_date = row['출석일'].split(' ')[0]  # 날짜 부분만 가져오기
-            if attendance_date == today and row['교시'] == period_text:
-                count += 1
+    try:
+        today_start = datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        
+        # 타임존 제거 후 쿼리
+        today_start = today_start.replace(tzinfo=None)
+        today_end = today_end.replace(tzinfo=None)
+        
+        # 당일 현재 교시 출석 기록 수 조회
+        count = Attendance.query.filter(
+            Attendance.date >= today_start,
+            Attendance.date < today_end,
+            Attendance.period == period_text
+        ).count()
+    except Exception as e:
+        logging.error(f"현재 교시 출석 인원 데이터베이스 조회 오류: {e}")
+    
+    # 2. CSV 파일에서도 호환성을 위해 확인 (이전 시스템과의 호환성 유지)
+    if os.path.exists(FILENAME):
+        try:
+            with open(FILENAME, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    attendance_date = row['출석일'].split(' ')[0]  # 날짜 부분만 가져오기
+                    if attendance_date == today and row['교시'] == period_text:
+                        # 데이터베이스에 없는 기록인지 확인하기 어려우므로, 모든 CSV 기록을 카운트
+                        count += 1
+        except Exception as e:
+            logging.error(f"현재 교시 출석 인원 CSV 조회 오류: {e}")
                 
     return count
 
@@ -318,78 +339,113 @@ def check_attendance(student_id, admin_override=False):
     # 경고 받은 경우 출석 차단
     if is_warned and not admin_override:
         return False, None, True, warning_info
-        
-    if not os.path.exists(FILENAME):
-        return False, None, False, None
-        
+    
+    # 현재 한국 시간
+    now = datetime.now(KST).replace(tzinfo=None)
+    
+    # 현재 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
+    current_weekday = now.weekday()
+    
+    # 이번 주 월요일 계산 (현재가 월요일이면 오늘, 아니면 지난 월요일)
+    days_since_monday = current_weekday
+    this_week_monday = now - timedelta(days=days_since_monday)
+    this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # 1. 데이터베이스에서 학생의 최근 출석 기록 확인 (1주일 이내)
+    recent_attendance = Attendance.get_recent_attendance(student_id, days=7)
+    
+    # 2. 주간 출석 여부 확인 (월요일부터 금요일까지의 기간 동안)
+    # 데이터베이스에서 모든 출석 기록 가져오기
+    all_attendances = Attendance.get_attendances_by_student(student_id)
+    
+    # 가장 최근 출석 날짜 및 주간 출석 횟수 계산
     last_attendance_date = None
-    latest_attendance_datetime = None
     weekly_attendance_count = 0
     
-    with open(FILENAME, newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
+    for attendance in all_attendances:
+        # 출석 날짜가 이번 주 월요일 이후인지 확인
+        if attendance.date.replace(tzinfo=None) >= this_week_monday and attendance.date.replace(tzinfo=None).weekday() <= 4:
+            weekly_attendance_count += 1
         
-        # 현재 한국 시간
-        now = datetime.now(KST).replace(tzinfo=None)
-        
-        # 현재 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
-        # datetime에서 weekday()는 0이 월요일, 6이 일요일
-        current_weekday = now.weekday()
-        
-        # 이번 주 월요일 계산 (현재가 월요일이면 오늘, 아니면 지난 월요일)
-        days_since_monday = current_weekday
-        this_week_monday = now - timedelta(days=days_since_monday)
-        this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
-        
-        # '이번 주'를 월요일부터 금요일까지로 정의
-        for r in reader:
-            if r['학번'] == student_id:
-                try:
-                    # 날짜에 시간 정보 포함 여부 확인 및 처리
-                    attendance_date = r['출석일']
-                    if ' ' in attendance_date:
-                        # 날짜와 시간 부분을 분리
-                        date_part = attendance_date.split(' ')[0]  # 날짜 부분만 추출
-                    else:
-                        date_part = attendance_date
-                        
-                    # 날짜만 파싱
-                    attend_time = datetime.strptime(date_part, '%Y-%m-%d')
-                    
-                    # 가장 최근 출석 날짜 업데이트
-                    if latest_attendance_datetime is None or attend_time > latest_attendance_datetime:
-                        latest_attendance_datetime = attend_time
-                        last_attendance_date = date_part
-                        
-                    # 이번 주(월~금) 출석 체크
-                    # 출석날짜가 이번 주 월요일 이후이고, 금요일(weekday=4) 이하인 경우만 카운트
-                    if attend_time >= this_week_monday and attend_time.weekday() <= 4:
-                        weekly_attendance_count += 1
-                            
-                except ValueError:
-                    continue
-        
-        # 모든 출석 기록을 확인한 후 주간 출석 횟수에 따라 출석 제한 여부 결정
-        # 이번 주에 이미 한 번 출석한 경우
-        # admin_override 파라미터를 통해 관리자 여부를 확인 (session에서 직접 확인하지 않음)
-        if weekly_attendance_count >= 1:
-            return True, last_attendance_date, False, None
-        # 일주일 이내 출석은 없지만, 과거 출석 기록이 있는 경우
-        if last_attendance_date:
-            return False, last_attendance_date, False, None
+        # 가장 최근 출석 날짜 업데이트
+        if last_attendance_date is None or attendance.date.replace(tzinfo=None) > last_attendance_date:
+            last_attendance_date = attendance.date.replace(tzinfo=None)
+    
+    # 3. CSV 파일도 병행 확인 (이전 시스템과의 호환성 유지)
+    if os.path.exists(FILENAME):
+        with open(FILENAME, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
             
-        # 출석 기록이 없는 경우    
+            for r in reader:
+                if r['학번'] == student_id:
+                    try:
+                        # 날짜에 시간 정보 포함 여부 확인 및 처리
+                        attendance_date = r['출석일']
+                        if ' ' in attendance_date:
+                            date_part = attendance_date.split(' ')[0]  # 날짜 부분만 추출
+                        else:
+                            date_part = attendance_date
+                            
+                        # 날짜만 파싱
+                        attend_time = datetime.strptime(date_part, '%Y-%m-%d')
+                        
+                        # 가장 최근 출석 날짜 업데이트
+                        if last_attendance_date is None or attend_time > last_attendance_date:
+                            last_attendance_date = attend_time
+                            
+                        # 이번 주(월~금) 출석 체크
+                        if attend_time >= this_week_monday and attend_time.weekday() <= 4:
+                            weekly_attendance_count += 1
+                                
+                    except ValueError:
+                        continue
+    
+    # 결과 반환
+    if weekly_attendance_count >= 1:
+        # 날짜를 문자열로 변환
+        last_date_str = last_attendance_date.strftime('%Y-%m-%d') if last_attendance_date else None
+        return True, last_date_str, False, None
+    elif last_attendance_date:
+        # 최근 출석은 있지만 이번 주는 아닌 경우
+        last_date_str = last_attendance_date.strftime('%Y-%m-%d') if last_attendance_date else None
+        return False, last_date_str, False, None
+    else:
+        # 출석 기록이 없는 경우
         return False, None, False, None
 
 def load_attendance():
     """
-    Load all attendance records
+    Load all attendance records 
     Returns a list of dictionaries containing attendance records
+    Now prioritizes database records but includes CSV records for compatibility
     """
-    if not os.path.exists(FILENAME):
-        return []
-    with open(FILENAME, newline='', encoding='utf-8') as f:
-        return list(csv.DictReader(f))
+    # 1. 데이터베이스에서 출석 정보 로드
+    db_attendances = []
+    try:
+        attendances = Attendance.query.order_by(Attendance.date.desc()).all()
+        for attendance in attendances:
+            # 데이터베이스 모델을 딕셔너리로 변환
+            db_attendances.append({
+                '출석일': attendance.date.strftime('%Y-%m-%d %H:%M:%S'),
+                '교시': attendance.period,
+                '학번': attendance.student_id,
+                '이름': attendance.name,
+                '공강좌석번호': attendance.seat or ''
+            })
+    except Exception as e:
+        logging.error(f"데이터베이스 출석 기록 로드 오류: {e}")
+
+    # 2. CSV 파일에서도 출석 정보 로드 (이전 시스템과의 호환성 유지)
+    csv_attendances = []
+    if os.path.exists(FILENAME):
+        with open(FILENAME, newline='', encoding='utf-8') as f:
+            csv_attendances = list(csv.DictReader(f))
+    
+    # 3. 두 소스의 기록을 결합 (중복 제거 없이 모두 반환)
+    # 시스템이 완전히 데이터베이스로 전환되면 CSV 부분은 제거 예정
+    all_attendances = db_attendances + csv_attendances
+    
+    return all_attendances
 
 def save_attendance(student_id, name, seat):
     """
@@ -798,9 +854,37 @@ def delete_records():
         if not records_to_delete:
             return jsonify({'success': False, 'error': '삭제할 기록이 선택되지 않았습니다.'}), 400
         
-        # 파일 읽기
+        # 1. 데이터베이스에서 기록 삭제
+        db_deleted_count = 0
+        for delete_key in records_to_delete:
+            # delete_key 형식은 "2025-05-13 14:30:45_20210123" (출석일_학번)
+            try:
+                if '_' in delete_key:
+                    datetime_str, student_id = delete_key.split('_', 1)
+                    
+                    # 해당 학생의 해당 날짜 출석 기록 찾기
+                    attendances = Attendance.query.filter_by(student_id=student_id).all()
+                    
+                    for attendance in attendances:
+                        # 날짜/시간 비교 (문자열 형식이 다를 수 있으므로 날짜 부분만 비교)
+                        record_date_str = attendance.date.strftime('%Y-%m-%d')
+                        if datetime_str.startswith(record_date_str):
+                            # 데이터베이스에서 삭제
+                            Attendance.delete_attendance(attendance.id)
+                            db_deleted_count += 1
+                            logging.info(f"데이터베이스에서 기록 삭제됨: {delete_key}")
+            except Exception as db_error:
+                logging.error(f"데이터베이스 기록 삭제 중 오류: {db_error}")
+        
+        # 2. CSV 파일에서도 기록 삭제 (이전 시스템과의 호환성 유지)
         if not os.path.exists(FILENAME):
-            return jsonify({'success': False, 'error': '출석 기록 파일이 존재하지 않습니다.'}), 404
+            return jsonify({
+                'success': True, 
+                'deleted_count': db_deleted_count,
+                'db_deleted': db_deleted_count,
+                'csv_deleted': 0, 
+                'message': f'{db_deleted_count}개의 기록이 데이터베이스에서 삭제되었습니다.'
+            }), 200
         
         # 기존 기록 읽기
         with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
@@ -814,6 +898,9 @@ def delete_records():
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(all_records)
+        
+        # 3. CSV 파일에서 삭제 처리
+        csv_deleted_count = 0
         
         # 삭제할 기록들을 파싱 (새로운 JSON 형식으로)
         records_set = set()
