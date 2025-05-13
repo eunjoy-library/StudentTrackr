@@ -134,20 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
         customModal.style.display = 'none';
     }
     
-    // 간단한 웨이브 오디오 신호로 소리 직접 생성
-    let audioContext = null;
-    
-    // 사용자 상호작용 시 오디오 컨텍스트 초기화
-    function initAudio() {
-        try {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('오디오 컨텍스트 초기화됨');
-            }
-        } catch (e) {
-            console.error('오디오 초기화 오류:', e);
-        }
-    }
+    // HTML 오디오 요소 사용으로 변경
     
     // 성공 소리 재생 - HTML 오디오 요소 사용
     function playSuccessSound() {
@@ -198,18 +185,15 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 실패 소리 재생 - "삐비빕" 경고음으로 변경
     function playErrorSound() {
-        if (!audioContext) {
-            console.log('오디오 컨텍스트가 초기화되지 않았습니다');
-            return;
-        }
-        
         try {
-            // 삐-비-빕 경고 패턴 (높은 음에서 낮은 음으로 떨어지는 패턴)
-            playErrorTone(880.00, 0, 0.15, 'square'); // 첫 번째 높은 "삐" 소리 (A5) - 사각파로 날카로운 소리
-            playErrorTone(587.33, 0.15, 0.15, 'square'); // 두 번째 중간 "비" 소리 (D5) - 사각파
-            playErrorTone(440.00, 0.3, 0.2, 'square'); // 세 번째 낮은 "빕" 소리 (A4) - 사각파
-            
-            console.log('실패 소리 재생됨');
+            const errorSound = document.getElementById('errorSound');
+            if (errorSound) {
+                errorSound.currentTime = 0; // 시작 위치 초기화
+                errorSound.play();
+                console.log('실패 소리 재생됨');
+            } else {
+                console.error('실패 소리 요소를 찾을 수 없습니다');
+            }
         } catch (e) {
             console.error('소리 재생 오류:', e);
         }
