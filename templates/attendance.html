@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 성공 소리 재생 - 명확한 "띵동" 소리
+    // 성공 소리 재생 - 편안한 "띵동" 소리 (음 낮춤)
     function playSuccessSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -154,11 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // "띵" - 높은 음 (C6)
-            playSuccessNote(1046.50, 0, 0.15, 'triangle'); // C6 - 삼각파로 더 명확한 소리
+            // "띵" - 중간 음역대 (G4)
+            playSuccessNote(392.00, 0, 0.15, 'triangle'); // G4 - 삼각파로 명확한 소리
             
-            // "동" - 약간 더 낮은 음 (G5)
-            playSuccessNote(783.99, 0.15, 0.3, 'sine'); // G5 - 사인파로 부드러운 소리
+            // "동" - 약간 더 낮은 음 (C4)
+            playSuccessNote(261.63, 0.15, 0.3, 'sine'); // C4 - 사인파로 부드러운 소리
             
             console.log('띵동 소리 재생됨');
         } catch (e) {
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         oscillator.stop(now + startDelay + duration);
     }
     
-    // 실패 소리 재생 - 어두운 톤 (낮은 주파수)
+    // 실패 소리 재생 - 부드러운 경고음 (음역대 낮춤)
     function playErrorSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -205,37 +205,42 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // 오실레이터 생성 (삼각파)
-            const oscillator = audioContext.createOscillator();
-            oscillator.type = 'triangle';
-            
-            // 게인 노드 생성
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.2; // 볼륨
-            
-            // 오실레이터 연결
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // 주파수 설정 (낮은 주파수 - 어두운 소리)
-            oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3 음
-            
-            // 사운드 볼륨 변화 설정
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            // 소리 재생 시작
-            oscillator.start();
-            
-            // 0.5초 후 소리 종료
-            setTimeout(() => {
-                oscillator.stop();
-            }, 500);
+            // 첫 번째 톤
+            playErrorTone(196.00, 0, 0.2); // G3 음
+            // 두 번째 톤 (약간 낮음)
+            playErrorTone(164.81, 0.2, 0.3); // E3 음
             
             console.log('실패 소리 재생됨');
         } catch (e) {
             console.error('소리 재생 오류:', e);
         }
+    }
+    
+    // 실패 소리의 각 톤 재생 함수
+    function playErrorTone(frequency, startDelay, duration) {
+        // 오실레이터 생성 (삼각파)
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = 'sawtooth'; // 톱니파 - 부드러운 경고음
+        
+        // 게인 노드 생성
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.15; // 볼륨 낮춤
+        
+        // 오실레이터 연결
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // 주파수 설정 (낮은 주파수)
+        const now = audioContext.currentTime;
+        oscillator.frequency.setValueAtTime(frequency, now + startDelay);
+        
+        // 사운드 볼륨 변화 설정
+        gainNode.gain.setValueAtTime(0.15, now + startDelay);
+        gainNode.gain.linearRampToValueAtTime(0, now + startDelay + duration);
+        
+        // 소리 재생 시작
+        oscillator.start(now + startDelay);
+        oscillator.stop(now + startDelay + duration);
     }
     
     // 소리 종류에 따라 적절한 소리 재생
