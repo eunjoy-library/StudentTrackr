@@ -131,90 +131,109 @@ document.addEventListener('DOMContentLoaded', function () {
         customModal.style.display = 'none';
     }
     
-    // Web Audio API를 사용한 소리 재생
-    // 소리 캐시 및 컨텍스트
+    // 간단한 웨이브 오디오 신호로 소리 직접 생성
     let audioContext = null;
-    let successBuffer = null;
-    let errorBuffer = null;
     
-    // 소리 초기화 함수 (사용자 상호작용 이벤트에서 호출)
+    // 사용자 상호작용 시 오디오 컨텍스트 초기화
     function initAudio() {
         try {
-            // AudioContext 생성 (아직 없는 경우)
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('오디오 컨텍스트 생성됨');
-                
-                // 성공 소리 로드
-                loadSound('{{ url_for('static', filename='sounds/success.mp3') }}', function(buffer) {
-                    successBuffer = buffer;
-                    console.log('성공 소리 로드됨');
-                });
-                
-                // 에러 소리 로드
-                loadSound('{{ url_for('static', filename='sounds/error.mp3') }}', function(buffer) {
-                    errorBuffer = buffer;
-                    console.log('에러 소리 로드됨');
-                });
+                console.log('오디오 컨텍스트 초기화됨');
             }
         } catch (e) {
             console.error('오디오 초기화 오류:', e);
         }
     }
     
-    // 소리 파일 로드 함수
-    function loadSound(url, callback) {
-        if (!audioContext) return;
+    // 성공 소리 재생 - 밝은 톤 (높은 주파수)
+    function playSuccessSound() {
+        if (!audioContext) {
+            console.log('오디오 컨텍스트가 초기화되지 않았습니다');
+            return;
+        }
         
-        const request = new XMLHttpRequest();
-        request.open('GET', url, true);
-        request.responseType = 'arraybuffer';
-        
-        request.onload = function() {
-            audioContext.decodeAudioData(
-                request.response,
-                function(buffer) {
-                    callback(buffer);
-                },
-                function(error) {
-                    console.error('소리 디코딩 오류:', error);
-                }
-            );
-        };
-        
-        request.onerror = function() {
-            console.error('소리 로딩 오류');
-        };
-        
-        request.send();
-    }
-    
-    // 소리 재생 함수
-    function playSound(type) {
         try {
-            if (!audioContext) {
-                console.log('오디오가 초기화되지 않았습니다');
-                return;
-            }
+            // 오실레이터 생성 (사인파)
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
             
-            // 재생할 버퍼 선택
-            const buffer = type === 'successSound' ? successBuffer : errorBuffer;
+            // 게인 노드 생성 (볼륨 조절용)
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.1; // 낮은 볼륨 (0-1)
             
-            if (!buffer) {
-                console.log('아직 소리가 로드되지 않았습니다');
-                return;
-            }
+            // 오실레이터 연결
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
             
-            // 소스 생성 및 연결
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
+            // 주파수 설정 (높은 주파수 - 밝은 소리)
+            oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5 음
             
-            // 소리 재생
-            source.start(0);
-            console.log(`${type} 재생됨`);
+            // 사운드 볼륨 변화 설정
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            // 소리 재생 시작
+            oscillator.start();
+            
+            // 0.3초 후 소리 종료
+            setTimeout(() => {
+                oscillator.stop();
+            }, 300);
+            
+            console.log('성공 소리 재생됨');
         } catch (e) {
             console.error('소리 재생 오류:', e);
+        }
+    }
+    
+    // 실패 소리 재생 - 어두운 톤 (낮은 주파수)
+    function playErrorSound() {
+        if (!audioContext) {
+            console.log('오디오 컨텍스트가 초기화되지 않았습니다');
+            return;
+        }
+        
+        try {
+            // 오실레이터 생성 (삼각파)
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'triangle';
+            
+            // 게인 노드 생성
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.2; // 볼륨
+            
+            // 오실레이터 연결
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // 주파수 설정 (낮은 주파수 - 어두운 소리)
+            oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3 음
+            
+            // 사운드 볼륨 변화 설정
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            // 소리 재생 시작
+            oscillator.start();
+            
+            // 0.5초 후 소리 종료
+            setTimeout(() => {
+                oscillator.stop();
+            }, 500);
+            
+            console.log('실패 소리 재생됨');
+        } catch (e) {
+            console.error('소리 재생 오류:', e);
+        }
+    }
+    
+    // 소리 종류에 따라 적절한 소리 재생
+    function playSound(type) {
+        if (type === 'successSound') {
+            playSuccessSound();
+        } else {
+            playErrorSound();
         }
     }
     
