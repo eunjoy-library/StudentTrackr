@@ -3,6 +3,10 @@
 {% block title %}도서실 출석 시스템{% endblock %}
 
 {% block content %}
+<!-- 오디오 요소들 (보이지 않음) -->
+<audio id="successSound" preload="auto" src="{{ url_for('static', filename='sounds/success.mp3') }}"></audio>
+<audio id="errorSound" preload="auto" src="{{ url_for('static', filename='sounds/error.mp3') }}"></audio>
+
 <!-- 커스텀 모달 -->
 <div class="modal-background" id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;">
     <div class="modal-content" style="background: white; width: 400px; margin: 150px auto; padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
@@ -137,12 +141,27 @@ document.addEventListener('DOMContentLoaded', function () {
             // 버튼이 비활성화되어 있거나 이미 출석한 학생이면 작동하지 않음
             if (this.disabled || studentAlreadyAttended) {
                 console.log('버튼 클릭 취소: 비활성화 또는 이미 출석한 학생');
+                
+                // 이미 출석한 학생인 경우 에러 소리 재생
+                if (studentAlreadyAttended) {
+                    const errorSound = document.getElementById('errorSound');
+                    if (errorSound) {
+                        errorSound.play();
+                    }
+                }
+                
                 closeModal();
                 return;
             }
             
             // 모달 닫기
             closeModal();
+            
+            // 성공 소리 재생
+            const successSound = document.getElementById('successSound');
+            if (successSound) {
+                successSound.play();
+            }
             
             // 폼 제출 (서버로 데이터 전송)
             console.log('폼 제출 시작');
@@ -328,6 +347,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${modalContent}
                             `;
                             
+                            // 에러 소리 재생
+                            const errorSound = document.getElementById('errorSound');
+                            if (errorSound) {
+                                errorSound.play();
+                            }
+                            
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
                             modalConfirmBtn.classList.add('btn-secondary');
@@ -341,6 +366,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 </div>
                                 ${modalContent}
                             `;
+                            
+                            // 에러 소리 재생
+                            const errorSound = document.getElementById('errorSound');
+                            if (errorSound) {
+                                errorSound.play();
+                            }
                             
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
