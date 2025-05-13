@@ -16,10 +16,10 @@
 </div>
 
 <!-- 오디오 요소들 (숨김) -->
-<audio id="successSound" preload="auto" style="display: none;">
+<audio id="successSound" preload="auto" controls style="display: none;">
     <source src="/static/sounds/success.mp3" type="audio/mpeg">
 </audio>
-<audio id="errorSound" preload="auto" style="display: none;">
+<audio id="errorSound" preload="auto" controls style="display: none;">
     <source src="/static/sounds/error.mp3" type="audio/mpeg">
 </audio>
 
@@ -108,14 +108,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const currentPeriodElement = document.getElementById('currentPeriod');
     
     // 오디오 요소 사용을 위한 함수로 변경 - WebAudio API는 더 이상 사용하지 않음
-    // 오디오 요소 초기화 (사용자 상호작용 필요)
-    document.addEventListener('click', function() {
-        const successSound = document.getElementById('successSound');
-        const errorSound = document.getElementById('errorSound');
-        
-        if (successSound) successSound.load();
-        if (errorSound) errorSound.load();
-    }, { once: true });
+    // 오디오 요소 초기화 및 상호작용 설정
+    // 페이지 로드 시 한 번 초기화를 시도하고 클릭 이벤트에서도 초기화
+    function initializeAudio() {
+        try {
+            const successSound = document.getElementById('successSound');
+            const errorSound = document.getElementById('errorSound');
+            
+            if (successSound) {
+                successSound.load();
+                // 오디오 로드 상태 확인
+                successSound.addEventListener('canplaythrough', () => {
+                    console.log('성공 소리 로드 완료');
+                });
+            }
+            
+            if (errorSound) {
+                errorSound.load();
+                // 오디오 로드 상태 확인
+                errorSound.addEventListener('canplaythrough', () => {
+                    console.log('실패 소리 로드 완료');
+                });
+            }
+        } catch (e) {
+            console.error('오디오 초기화 오류:', e);
+        }
+    }
+    
+    // 페이지 로드 시 초기화 시도
+    initializeAudio();
+    
+    // 첫 클릭 시 오디오 초기화 (브라우저 정책)
+    document.addEventListener('click', initializeAudio, { once: true });
     
     // 학생이 이미 출석했는지 여부를 저장하는 상태
     let studentAlreadyAttended = false;
@@ -230,7 +254,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 이미 출석한 학생인 경우 에러 소리 재생
                 if (studentAlreadyAttended) {
-                    playSound('errorSound');
+                    // 브라우저의 자동 재생 정책 때문에 사용자 상호작용을 확보한 상태에서 직접 play
+                    const errorSound = document.getElementById('errorSound');
+                    if (errorSound) {
+                        errorSound.currentTime = 0;
+                        const playPromise = errorSound.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.error('오류 소리 재생 실패:', error);
+                            });
+                        }
+                    }
                 }
                 
                 closeModal();
@@ -240,8 +274,17 @@ document.addEventListener('DOMContentLoaded', function () {
             // 모달 닫기
             closeModal();
             
-            // 성공 소리 재생
-            playSound('successSound');
+            // 성공 소리 재생 - 직접 재생
+            const successSound = document.getElementById('successSound');
+            if (successSound) {
+                successSound.currentTime = 0;
+                const playPromise = successSound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error('성공 소리 재생 실패:', error);
+                    });
+                }
+            }
             
             // 폼 제출 (서버로 데이터 전송)
             console.log('폼 제출 시작');
