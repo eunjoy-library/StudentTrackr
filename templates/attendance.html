@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
 
-    // 실패 소리 재생 (삐비빕) - A5 → D5 → A4 주파수 (880Hz → 587Hz → 440Hz)
+    // 실패 소리 재생 (삐-) - 단일음 D5 주파수 (587Hz)로 변경
     function playErrorSound() {
         try {
             if (!audioContext) {
@@ -209,42 +209,24 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const currentTime = audioContext.currentTime;
             
-            // 첫 번째 음 (A5, 880Hz)
-            const oscillator1 = audioContext.createOscillator();
-            oscillator1.type = 'sawtooth'; // 보다 날카로운 소리
-            oscillator1.frequency.value = 880;
-            
-            // 두 번째 음 (D5, 587Hz)
-            const oscillator2 = audioContext.createOscillator();
-            oscillator2.type = 'sawtooth';
-            oscillator2.frequency.value = 587;
-            
-            // 세 번째 음 (A4, 440Hz)
-            const oscillator3 = audioContext.createOscillator();
-            oscillator3.type = 'sawtooth';
-            oscillator3.frequency.value = 440;
+            // 단일 음 (D5, 587Hz)
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sawtooth'; // 보다 날카로운 소리
+            oscillator.frequency.value = 587;
             
             // 음량 조절을 위한 게인 노드
             const gainNode = audioContext.createGain();
             gainNode.gain.value = 0.2; // 음량 조절 (0.0 ~ 1.0)
             
             // 오실레이터와 게인 노드 연결
-            oscillator1.connect(gainNode);
-            oscillator2.connect(gainNode);
-            oscillator3.connect(gainNode);
+            oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            // 시작 및 종료 시간 설정 (짧게 삐삐삐)
-            oscillator1.start(currentTime);
-            oscillator1.stop(currentTime + 0.15);
+            // 시작 및 종료 시간 설정 (길게 삐-)
+            oscillator.start(currentTime);
+            oscillator.stop(currentTime + 0.5); // 0.5초 동안 단일음 재생
             
-            oscillator2.start(currentTime + 0.18);
-            oscillator2.stop(currentTime + 0.33);
-            
-            oscillator3.start(currentTime + 0.36);
-            oscillator3.stop(currentTime + 0.51);
-            
-            console.log('실패 소리 재생됨 (삐비빕)');
+            console.log('실패 소리 재생됨 (삐-)');
         } catch (e) {
             console.error('소리 재생 중 오류 발생:', e);
         }
