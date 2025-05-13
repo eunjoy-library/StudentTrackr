@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 성공 소리 재생 - 밝은 톤 (높은 주파수)
+    // 성공 소리 재생 - 명확한 "띵동" 소리
     function playSuccessSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -154,37 +154,47 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // 오실레이터 생성 (사인파)
-            const oscillator = audioContext.createOscillator();
-            oscillator.type = 'sine';
+            // "띵" - 높은 음 (C6)
+            playSuccessNote(1046.50, 0, 0.15, 'triangle'); // C6 - 삼각파로 더 명확한 소리
             
-            // 게인 노드 생성 (볼륨 조절용)
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.1; // 낮은 볼륨 (0-1)
+            // "동" - 약간 더 낮은 음 (G5)
+            playSuccessNote(783.99, 0.15, 0.3, 'sine'); // G5 - 사인파로 부드러운 소리
             
-            // 오실레이터 연결
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // 주파수 설정 (높은 주파수 - 밝은 소리)
-            oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5 음
-            
-            // 사운드 볼륨 변화 설정
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            
-            // 소리 재생 시작
-            oscillator.start();
-            
-            // 0.3초 후 소리 종료
-            setTimeout(() => {
-                oscillator.stop();
-            }, 300);
-            
-            console.log('성공 소리 재생됨');
+            console.log('띵동 소리 재생됨');
         } catch (e) {
             console.error('소리 재생 오류:', e);
         }
+    }
+    
+    // 성공 소리의 각 음표 재생 함수
+    function playSuccessNote(frequency, startDelay, duration, waveType) {
+        // 오실레이터 생성
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = waveType || 'sine'; // 파형 타입 설정
+        
+        // 게인 노드 생성 (볼륨 조절용)
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.3; // 볼륨 (0-1)
+        
+        // 오실레이터 연결
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // 주파수 설정
+        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + startDelay);
+        
+        // 사운드 볼륨 변화 설정 (더 명확한 ADSR 효과)
+        const now = audioContext.currentTime;
+        gainNode.gain.setValueAtTime(0, now + startDelay); // 시작 볼륨
+        gainNode.gain.linearRampToValueAtTime(0.3, now + startDelay + 0.03); // 빠른 Attack
+        gainNode.gain.setValueAtTime(0.3, now + startDelay + duration - 0.1); // Sustain
+        gainNode.gain.linearRampToValueAtTime(0, now + startDelay + duration); // Release
+        
+        // 지정된 시간 후 소리 재생 시작
+        oscillator.start(now + startDelay);
+        
+        // 지정된 시간 후 소리 종료
+        oscillator.stop(now + startDelay + duration);
     }
     
     // 실패 소리 재생 - 어두운 톤 (낮은 주파수)
