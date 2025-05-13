@@ -108,6 +108,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const currentPeriodElement = document.getElementById('currentPeriod');
     
     // 오디오 요소 사용을 위한 함수로 변경 - WebAudio API는 더 이상 사용하지 않음
+    // 오디오 요소 초기화 (사용자 상호작용 필요)
+    document.addEventListener('click', function() {
+        const successSound = document.getElementById('successSound');
+        const errorSound = document.getElementById('errorSound');
+        
+        if (successSound) successSound.load();
+        if (errorSound) errorSound.load();
+    }, { once: true });
     
     // 학생이 이미 출석했는지 여부를 저장하는 상태
     let studentAlreadyAttended = false;
