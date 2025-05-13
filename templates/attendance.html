@@ -466,11 +466,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${modalContent}
                             `;
                             
-                            // 에러 소리 재생
-                            const errorSound = document.getElementById('errorSound');
-                            if (errorSound) {
-                                errorSound.play();
-                            }
+                            // 에러 소리 재생 (Web Audio API 사용)
+                            playErrorSound();
                             
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
@@ -486,11 +483,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${modalContent}
                             `;
                             
-                            // 에러 소리 재생
-                            const errorSound = document.getElementById('errorSound');
-                            if (errorSound) {
-                                errorSound.play();
-                            }
+                            // 에러 소리 재생 (Web Audio API 사용)
+                            playErrorSound();
                             
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
@@ -529,11 +523,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     ${modalContent}
                                 `;
                                 
-                                // 에러 소리 재생
-                                const errorSound = document.getElementById('errorSound');
-                                if (errorSound) {
-                                    errorSound.play();
-                                }
+                                // 에러 소리 재생 (Web Audio API 사용)
+                                playErrorSound();
                                 
                                 // 확인 버튼 비활성화
                                 modalConfirmBtn.disabled = true;
