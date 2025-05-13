@@ -149,9 +149,21 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const successSound = document.getElementById('successSound');
             if (successSound) {
+                // 브라우저의 자동 재생 정책 때문에 promise를 사용
                 successSound.currentTime = 0; // 시작 위치 초기화
-                successSound.play();
-                console.log('띵동 소리 재생됨');
+                let playPromise = successSound.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('띵동 소리 재생 성공');
+                        })
+                        .catch(error => {
+                            console.error('소리 재생 실패:', error);
+                            // 사용자 상호작용이 필요함을 콘솔에 기록
+                            console.log('브라우저에서 자동 재생이 차단되었습니다. 사용자 상호작용이 필요합니다.');
+                        });
+                }
             } else {
                 console.error('성공 소리 요소를 찾을 수 없습니다');
             }
@@ -167,9 +179,21 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const errorSound = document.getElementById('errorSound');
             if (errorSound) {
+                // 브라우저의 자동 재생 정책 때문에 promise를 사용
                 errorSound.currentTime = 0; // 시작 위치 초기화
-                errorSound.play();
-                console.log('실패 소리 재생됨');
+                let playPromise = errorSound.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('실패 소리 재생 성공');
+                        })
+                        .catch(error => {
+                            console.error('소리 재생 실패:', error);
+                            // 사용자 상호작용이 필요함을 콘솔에 기록
+                            console.log('브라우저에서 자동 재생이 차단되었습니다. 사용자 상호작용이 필요합니다.');
+                        });
+                }
             } else {
                 console.error('실패 소리 요소를 찾을 수 없습니다');
             }
