@@ -99,7 +99,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const customModal = document.getElementById('customModal');
     const currentPeriodElement = document.getElementById('currentPeriod');
     
-    // 사용자 상호작용 시 오디오 초기화
+    // 페이지 로드 시 오디오 초기화 시도
+    initAudio();
+    
+    // 사용자 상호작용 시 오디오 초기화 (백업으로 유지)
     window.addEventListener('click', function() {
         if (!audioContext) {
             initAudio();
@@ -466,8 +469,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${modalContent}
                             `;
                             
-                            // 에러 소리 재생 (Web Audio API 사용)
-                            playErrorSound();
+                            // 에러 소리 재생 (Web Audio API 사용, 1초 지연)
+                            setTimeout(playErrorSound, 100);
+                            console.log('경고 학생 에러 소리 재생 예약');
                             
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
@@ -483,8 +487,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${modalContent}
                             `;
                             
-                            // 에러 소리 재생 (Web Audio API 사용)
-                            playErrorSound();
+                            // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
+                            setTimeout(playErrorSound, 100);
+                            console.log('수용 인원 초과 에러 소리 재생 예약');
                             
                             // 확인 버튼 비활성화
                             modalConfirmBtn.disabled = true;
@@ -523,8 +528,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     ${modalContent}
                                 `;
                                 
-                                // 에러 소리 재생 (Web Audio API 사용)
-                                playErrorSound();
+                                // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
+                                setTimeout(playErrorSound, 100);
+                                console.log('이미 출석한 학생 에러 소리 재생 예약');
                                 
                                 // 확인 버튼 비활성화
                                 modalConfirmBtn.disabled = true;
