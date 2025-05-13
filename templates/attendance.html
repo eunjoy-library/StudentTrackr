@@ -3,9 +3,6 @@
 {% block title %}도서실 출석 시스템{% endblock %}
 
 {% block content %}
-<!-- 오디오 요소들 (보이지 않음) -->
-<audio id="successSound" preload="auto" src="{{ url_for('static', filename='sounds/success.mp3') }}"></audio>
-<audio id="errorSound" preload="auto" src="{{ url_for('static', filename='sounds/error.mp3') }}"></audio>
 
 <!-- 커스텀 모달 -->
 <div class="modal-background" id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;">
@@ -102,6 +99,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const customModal = document.getElementById('customModal');
     const currentPeriodElement = document.getElementById('currentPeriod');
     
+    // 사용자 상호작용 시 오디오 초기화
+    window.addEventListener('click', function() {
+        if (!audioContext) {
+            initAudio();
+        }
+    });
+    
     // 학생이 이미 출석했는지 여부를 저장하는 상태
     let studentAlreadyAttended = false;
     
@@ -127,30 +131,90 @@ document.addEventListener('DOMContentLoaded', function () {
         customModal.style.display = 'none';
     }
     
-    // 소리 재생 함수 - 브라우저 자동 재생 정책을 고려하여 수정
-    function playSound(soundId) {
+    // Web Audio API를 사용한 소리 재생
+    // 소리 캐시 및 컨텍스트
+    let audioContext = null;
+    let successBuffer = null;
+    let errorBuffer = null;
+    
+    // 소리 초기화 함수 (사용자 상호작용 이벤트에서 호출)
+    function initAudio() {
         try {
-            const sound = document.getElementById(soundId);
-            if (sound) {
-                // 볼륨 설정 (0.0 ~ 1.0)
-                sound.volume = 0.5;
+            // AudioContext 생성 (아직 없는 경우)
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('오디오 컨텍스트 생성됨');
                 
-                // 소리 재생 시도
-                var playPromise = sound.play();
+                // 성공 소리 로드
+                loadSound('{{ url_for('static', filename='sounds/success.mp3') }}', function(buffer) {
+                    successBuffer = buffer;
+                    console.log('성공 소리 로드됨');
+                });
                 
-                // 자동 재생 정책으로 인한 오류 처리
-                if (playPromise !== undefined) {
-                    playPromise.then(_ => {
-                        // 재생 성공
-                        console.log(`${soundId} 재생 성공`);
-                    }).catch(error => {
-                        // 자동 재생 정책으로 인한 오류 처리
-                        console.log(`${soundId} 재생 실패: ${error}`);
-                    });
-                }
+                // 에러 소리 로드
+                loadSound('{{ url_for('static', filename='sounds/error.mp3') }}', function(buffer) {
+                    errorBuffer = buffer;
+                    console.log('에러 소리 로드됨');
+                });
             }
-        } catch (error) {
-            console.error(`소리 재생 오류: ${error}`);
+        } catch (e) {
+            console.error('오디오 초기화 오류:', e);
+        }
+    }
+    
+    // 소리 파일 로드 함수
+    function loadSound(url, callback) {
+        if (!audioContext) return;
+        
+        const request = new XMLHttpRequest();
+        request.open('GET', url, true);
+        request.responseType = 'arraybuffer';
+        
+        request.onload = function() {
+            audioContext.decodeAudioData(
+                request.response,
+                function(buffer) {
+                    callback(buffer);
+                },
+                function(error) {
+                    console.error('소리 디코딩 오류:', error);
+                }
+            );
+        };
+        
+        request.onerror = function() {
+            console.error('소리 로딩 오류');
+        };
+        
+        request.send();
+    }
+    
+    // 소리 재생 함수
+    function playSound(type) {
+        try {
+            if (!audioContext) {
+                console.log('오디오가 초기화되지 않았습니다');
+                return;
+            }
+            
+            // 재생할 버퍼 선택
+            const buffer = type === 'successSound' ? successBuffer : errorBuffer;
+            
+            if (!buffer) {
+                console.log('아직 소리가 로드되지 않았습니다');
+                return;
+            }
+            
+            // 소스 생성 및 연결
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            
+            // 소리 재생
+            source.start(0);
+            console.log(`${type} 재생됨`);
+        } catch (e) {
+            console.error('소리 재생 오류:', e);
         }
     }
     
