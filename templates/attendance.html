@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // 성공 소리 재생 - 편안한 "띵동" 소리 (음 낮춤)
+    // 성공 소리 재생 - 중간 음역대의 "띵동" 소리
     function playSuccessSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -154,11 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // "띵" - 중간 음역대 (G4)
-            playSuccessNote(392.00, 0, 0.15, 'triangle'); // G4 - 삼각파로 명확한 소리
+            // "띵" - 조금 더 높은 음 (C5)
+            playSuccessNote(523.25, 0, 0.15, 'triangle'); // C5 - 삼각파로 명확한 소리
             
-            // "동" - 약간 더 낮은 음 (C4)
-            playSuccessNote(261.63, 0.15, 0.3, 'sine'); // C4 - 사인파로 부드러운 소리
+            // "동" - 약간 더 낮은 음 (G4)
+            playSuccessNote(392.00, 0.15, 0.3, 'sine'); // G4 - 사인파로 부드러운 소리
             
             console.log('띵동 소리 재생됨');
         } catch (e) {
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         oscillator.stop(now + startDelay + duration);
     }
     
-    // 실패 소리 재생 - 부드러운 경고음 (음역대 낮춤)
+    // 실패 소리 재생 - 중간 음역대의 경고음
     function playErrorSound() {
         if (!audioContext) {
             console.log('오디오 컨텍스트가 초기화되지 않았습니다');
@@ -205,10 +205,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
-            // 첫 번째 톤
-            playErrorTone(196.00, 0, 0.2); // G3 음
+            // 첫 번째 톤 (약간 더 높게)
+            playErrorTone(261.63, 0, 0.2); // C4 음
             // 두 번째 톤 (약간 낮음)
-            playErrorTone(164.81, 0.2, 0.3); // E3 음
+            playErrorTone(220.00, 0.2, 0.3); // A3 음
             
             console.log('실패 소리 재생됨');
         } catch (e) {
