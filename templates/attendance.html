@@ -163,15 +163,15 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const currentTime = audioContext.currentTime;
             
-            // 첫 번째 음 (C5, 523Hz)
+            // 첫 번째 음 (G4, 392Hz)
             const oscillator1 = audioContext.createOscillator();
             oscillator1.type = 'sine';
-            oscillator1.frequency.value = 523;
+            oscillator1.frequency.value = 392;
             
-            // 두 번째 음 (G4, 392Hz)
+            // 두 번째 음 (C5, 523Hz)
             const oscillator2 = audioContext.createOscillator();
             oscillator2.type = 'sine';
-            oscillator2.frequency.value = 392;
+            oscillator2.frequency.value = 523;
             
             // 음량 조절을 위한 게인 노드
             const gainNode = audioContext.createGain();
