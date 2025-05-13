@@ -163,10 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const currentTime = audioContext.currentTime;
             
-            // 첫 번째 음 (G4, 392Hz)
+            // 첫 번째 음 (E4, 330Hz)
             const oscillator1 = audioContext.createOscillator();
             oscillator1.type = 'sine';
-            oscillator1.frequency.value = 392;
+            oscillator1.frequency.value = 330;
             
             // 두 번째 음 (C5, 523Hz)
             const oscillator2 = audioContext.createOscillator();
