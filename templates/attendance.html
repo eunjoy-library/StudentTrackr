@@ -400,8 +400,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             
-            // 학생 정보 조회 후 확인 팝업 표시
-            fetch(`/lookup_name?student_id=${studentId}`)
+            // 먼저 로딩 메시지와 함께 모달 표시
+            const studentInfoText = document.getElementById('studentInfoText');
+            if (studentInfoText) {
+                studentInfoText.innerHTML = `
+                    <div style="text-align: center;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div style="margin-top: 10px;">학생 정보를 확인 중입니다...</div>
+                    </div>
+                `;
+            }
+            
+            // 모달 미리 표시
+            customModal.style.display = 'block';
+            
+            // 학생 정보 조회
+            fetch(`/lookup_name?student_id=${studentId}`, {
+                // 캐시 방지
+                cache: 'no-store',
+                // 중요도 높게 설정
+                priority: 'high'
+            })
                 .then(response => response.json())
                 .then(data => {
                     // API 응답 전체를 콘솔에 출력
@@ -443,9 +464,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
                         studentAlreadyAttended = alreadyAttended;
                         console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
-                        
-                        const studentInfoText = document.getElementById('studentInfoText');
-                        if (!studentInfoText) return;
                         
                         if (isWarned) {
                             // 경고 받은 학생인 경우
