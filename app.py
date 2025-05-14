@@ -963,20 +963,20 @@ def lookup_name():
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
         
-        # 모든 학번에 대해 우선 빠르게 이름과 좌석 정보를 반환하고 나머지 정보는 비동기적으로 처리
-        # 이렇게 하면 모달이 빠르게 표시되고 다른 정보는 나중에 업데이트됨
-        return jsonify({
-            'success': True, 
-            'name': name, 
-            'seat': seat,
-            'already_attended': False,
-            'last_attendance_date': None,
-            'capacity_exceeded': False,
-            'is_warned': False,
-            'warning_expiry': None,
-            'warning_message': None
-        })
-        
+        # 빠른 경로 처리: 교사 학번
+        if student_id.startswith('3'):
+            return jsonify({
+                'success': True, 
+                'name': name, 
+                'seat': seat,
+                'already_attended': False,
+                'last_attendance_date': None,
+                'capacity_exceeded': False,
+                'is_warned': False,
+                'warning_expiry': None,
+                'warning_message': None
+            })
+            
         # 초기값 설정
         already_attended = False
         last_attendance_date_str = None
@@ -1029,9 +1029,10 @@ def lookup_name():
             warning_expiry = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
             warning_message = warning_info.reason or "도서실 이용 규정 위반"
         
+        # 최종 결과 반환
         return jsonify({
-            'success': True, 
-            'name': name, 
+            'success': True,
+            'name': name,
             'seat': seat,
             'already_attended': already_attended,
             'last_attendance_date': last_attendance_date_str,
