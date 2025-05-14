@@ -148,8 +148,6 @@ document.addEventListener('DOMContentLoaded', function () {
         customModal.style.display = 'none';
     }
     
-    // HTML 오디오 요소 사용으로 변경
-    
     // 성공 소리 재생 (띵동) - C5 → G4 주파수 (523Hz → 392Hz)
     function playSuccessSound() {
         try {
@@ -232,8 +230,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // HTML 오디오 요소로 변경했으므로 더 이상 필요하지 않습니다.
-    
     // 소리 종류에 따라 적절한 소리 재생
     function playSound(type) {
         if (type === 'successSound') {
@@ -279,6 +275,29 @@ document.addEventListener('DOMContentLoaded', function () {
             form.submit();
             console.log('폼 제출 완료');
         });
+    }
+    
+    // 이름 마스킹 함수 - 가운데 글자를 *로 대체
+    function maskName(name) {
+        if (!name || name.length <= 1) return name;
+        
+        // 한글은 보통 2~4글자 (2글자: 성+이름, 3글자: 성+이름2글자, 4글자: 복성+이름)
+        if (name.length === 2) {
+            // 2글자 이름은 두번째 글자만 *로 대체
+            return name.charAt(0) + '*';
+        } else if (name.length === 3) {
+            // 3글자 이름은 가운데 글자만 *로 대체
+            return name.charAt(0) + '*' + name.charAt(2);
+        } else if (name.length === 4) {
+            // 4글자 이름은 가운데 두 글자를 *로 대체
+            return name.charAt(0) + '**' + name.charAt(3);
+        } else {
+            // 5글자 이상인 경우 (외국인 이름 등) 가운데 부분만 *로 대체
+            const firstChar = name.charAt(0);
+            const lastChar = name.charAt(name.length - 1);
+            const maskedPart = '*'.repeat(name.length - 2);
+            return firstChar + maskedPart + lastChar;
+        }
     }
     
     // 학번 입력 필드 이벤트 리스너 
@@ -337,29 +356,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // 이름 마스킹 함수 - 가운데 글자를 *로 대체
-    function maskName(name) {
-        if (!name || name.length <= 1) return name;
-        
-        // 한글은 보통 2~4글자 (2글자: 성+이름, 3글자: 성+이름2글자, 4글자: 복성+이름)
-        if (name.length === 2) {
-            // 2글자 이름은 두번째 글자만 *로 대체
-            return name.charAt(0) + '*';
-        } else if (name.length === 3) {
-            // 3글자 이름은 가운데 글자만 *로 대체
-            return name.charAt(0) + '*' + name.charAt(2);
-        } else if (name.length === 4) {
-            // 4글자 이름은 가운데 두 글자를 *로 대체
-            return name.charAt(0) + '**' + name.charAt(3);
-        } else {
-            // 5글자 이상인 경우 (외국인 이름 등) 가운데 부분만 *로 대체
-            const firstChar = name.charAt(0);
-            const lastChar = name.charAt(name.length - 1);
-            const maskedPart = '*'.repeat(name.length - 2);
-            return firstChar + maskedPart + lastChar;
-        }
-    }
-    
     // 폼 제출 이벤트 리스너
     if (form) {
         form.addEventListener('submit', function(event) {
@@ -392,11 +388,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     `;
                 }
                 
-                modalConfirmBtn.disabled = true;
-                modalConfirmBtn.classList.add('btn-secondary');
-                modalConfirmBtn.classList.remove('btn-primary');
-                
+                // 모달 표시
                 customModal.style.display = 'block';
+                
+                // 에러 소리 재생
+                playErrorSound();
+                
                 return;
             }
             
@@ -606,118 +603,80 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // 요일 정보
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-        const dayOfWeek = weekdays[now.getDay()];
+        const weekdayName = weekdays[now.getDay()];
         
-        // 현재 날짜 표시 (n월 n일 요일)
-        currentMonthDay.textContent = `${month}월 ${day}일 (${dayOfWeek})`;
+        // 현재 날짜를 표시: 5월 14일 (화)
+        currentMonthDay.textContent = `${month}월 ${day}일 (${weekdayName})`;
         
-        // 현재 교시 계산 및 표시
-        let currentPeriod = '';
-        let timeRange = '';
+        // 시간대별 교시 정보
+        let periodText = '';
+        let timeRangeText = '';
         
-        // UTC+9 기준 시간을 사용 (한국 시간)
-        const korHour = hour;
-        const korMinute = minute;
-        const korTime = korHour * 60 + korMinute; // 분 단위로 변환
-        
-        if (korHour >= 7 && korTime < 7 * 60 + 50) {
-            currentPeriod = '시간 외';
-            timeRange = '도서실 개방 전';
-        } else if (korTime >= 7 * 60 + 50 && korTime < 9 * 60 + 15) {
-            currentPeriod = '1교시';
-            timeRange = '07:50 ~ 09:15';
-        } else if (korTime >= 9 * 60 + 15 && korTime < 10 * 60 + 40) {
-            currentPeriod = '2교시';
-            timeRange = '09:15 ~ 10:40';
-        } else if (korTime >= 10 * 60 + 40 && korTime < 12 * 60 + 5) {
-            currentPeriod = '3교시';
-            timeRange = '10:40 ~ 12:05';
-        } else if (korTime >= 12 * 60 + 5 && korTime < 12 * 60 + 30) {
-            currentPeriod = '4교시';
-            timeRange = '12:05 ~ 12:30';
-        } else if (korTime >= 12 * 60 + 30 && korTime < 14 * 60 + 25) {
-            currentPeriod = '5교시';
-            timeRange = '12:30 ~ 14:25';
-        } else if (korTime >= 14 * 60 + 25 && korTime < 15 * 60 + 50) {
-            currentPeriod = '6교시';
-            timeRange = '14:25 ~ 15:50';
-        } else {
-            currentPeriod = '시간 외';
-            timeRange = '도서실 이용 불가';
-        }
-        
-        // 현재 교시 표시
-        currentPeriodElement.textContent = currentPeriod;
-        // 시간 범위 표시
-        periodTimeRangeElement.textContent = timeRange;
-        
-        // 버튼 텍스트 업데이트 (교시 정보에 따라 동적으로 변경)
-        if (submitBtnText && currentPeriod !== '시간 외' && currentPeriod !== '4교시') {
-            // 정규 교시인 경우 "n교시 출석하기"로 변경
-            submitBtnText.textContent = currentPeriod + ' 출석하기';
-        }
-        
-        // 교시에 따라 배지 색상 변경
-        if (currentPeriod === '시간 외' || currentPeriod === '4교시') {
-            currentPeriodElement.classList.remove('bg-primary');
-            currentPeriodElement.classList.add('bg-secondary');
-            
-            // 버튼이 있으면 비활성화
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                if (currentPeriod === '4교시') {
-                    submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i>4교시는 도서실 이용 시간이 아닙니다';
-                } else {
-                    submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i>지금은 도서실 이용 시간이 아닙니다';
-                }
-                submitBtn.classList.remove('btn-primary');
-                submitBtn.classList.add('btn-secondary');
-            }
-        } else {
-            currentPeriodElement.classList.remove('bg-secondary');
-            currentPeriodElement.classList.add('bg-primary');
-            
-            // 학번 길이 확인하여 버튼 활성화 여부 결정
-            if (submitBtn && studentIdInput && studentIdInput.value.trim().length >= 5) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
-                submitBtn.classList.remove('btn-secondary');
-                submitBtn.classList.add('btn-primary');
-            }
-        }
-    }
-    
-    // 시간 주기적으로 업데이트 (1초마다)
-    updateTimeAndPeriod();
-    setInterval(updateTimeAndPeriod, 1000);
-    
-    // 단축키 지정
-    document.addEventListener('keydown', function(e) {
-        // Ctrl + F: 메인 페이지 리디렉션 (브라우저 기본 검색 동작 방지)
-        if (e.ctrlKey && e.key === 'f') {
-            e.preventDefault();
-            window.location.href = '/';
-        }
-        
-        // Ctrl + Shift + A: 관리자 페이지 리디렉션
-        if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-            e.preventDefault();
-            window.location.href = '/admin';
-        }
-    });
+        // 교시 계산 - 서버에서 받은 로직과 일치시키기
+        const hourMin = hour * 60 + minute; // 현재 시간을 분 단위로 변환
 
-    // 하단 점(●) 클릭 카운터 (3번 클릭 시 관리자 페이지로 이동)
-    let dotClickCount = 0;
-    const dotElement = document.querySelector('.small.text-muted i');
-    if (dotElement) {
-        dotElement.addEventListener('click', function() {
-            dotClickCount++;
-            if (dotClickCount >= 3) {
-                dotClickCount = 0;
-                window.location.href = '/admin';
-            }
-        });
+        // 교시 정의
+        if (hourMin >= 7*60+50 && hourMin < 9*60+15) {
+            periodText = '1교시';
+            timeRangeText = '7:50 ~ 9:15';
+        } else if (hourMin >= 9*60+15 && hourMin < 10*60+40) {
+            periodText = '2교시';
+            timeRangeText = '9:15 ~ 10:40';
+        } else if (hourMin >= 10*60+40 && hourMin < 12*60+5) {
+            periodText = '3교시';
+            timeRangeText = '10:40 ~ 12:05';
+        } else if (hourMin >= 12*60+5 && hourMin < 12*60+30) {
+            periodText = '4교시';
+            timeRangeText = '12:05 ~ 12:30';
+        } else if (hourMin >= 12*60+30 && hourMin < 14*60+25) {
+            periodText = '5교시';
+            timeRangeText = '12:30 ~ 14:25';
+        } else if (hourMin >= 14*60+25 && hourMin < 15*60+50) {
+            periodText = '6교시';
+            timeRangeText = '14:25 ~ 15:50';
+        } else {
+            periodText = '시간 외';
+            timeRangeText = '도서실 이용시간이 아닙니다';
+        }
+        
+        // 주말인 경우 시간 외로 표시
+        if (now.getDay() === 0 || now.getDay() === 6) {
+            periodText = '시간 외';
+            timeRangeText = '주말은 도서실 이용이 불가합니다';
+        }
+        
+        // 4교시인 경우 버튼 비활성화 메시지 표시
+        if (periodText === '4교시' && submitBtnText) {
+            submitBtnText.textContent = '4교시는 도서실 이용 시간이 아닙니다';
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+        } else if (periodText === '시간 외' && submitBtnText) {
+            submitBtnText.textContent = '지금은 도서실 이용 시간이 아닙니다';
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+        } else if (submitBtnText && studentIdInput.value.trim().length < 5) {
+            // 정규 시간이지만 학번이 입력되지 않은 경우
+            submitBtnText.textContent = periodText + ' 출석하기';
+            submitBtn.disabled = true;
+        }
+        
+        // 교시 정보 업데이트
+        currentPeriodElement.textContent = periodText;
+        
+        // 교시 설명 업데이트
+        periodTimeRangeElement.textContent = timeRangeText;
+        
+        // 교시에 따라 출석 버튼 텍스트 업데이트
+        updateSubmitButtonText();
     }
+    
+    // 페이지 로드 시 시간 업데이트
+    updateTimeAndPeriod();
+    
+    // 1분마다 시간 정보 업데이트
+    setInterval(updateTimeAndPeriod, 60000); // 1분(60,000ms)마다 갱신
 });
 </script>
 {% endblock %}
