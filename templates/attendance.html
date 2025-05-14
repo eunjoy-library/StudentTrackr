@@ -301,18 +301,32 @@ document.addEventListener('DOMContentLoaded', function() {
             const maskedStudentId = studentId.length > 5 ? 
                     studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
                     studentId;
-                    
+            
+            // 학번 앞 두 자리로 학년 파악하기
+            let grade = "";
+            let gradeNumeric = 0;
+            if (studentId.length >= 2) {
+                gradeNumeric = parseInt(studentId.substring(0, 2));
+                if (gradeNumeric >= 10 && gradeNumeric <= 12) {
+                    // 10학년(1학년), 11학년(2학년), 12학년(3학년)
+                    grade = (gradeNumeric - 9) + "학년";
+                }
+            }
+            
+            // 이름 정보가 없을 때 보여줄 기본 내용
+            const initialContent = `
+                <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
+                    학번: ${maskedStudentId} ${grade ? `(${grade})` : ''}
+                </div>
+                <div style="font-size: 20px; margin-bottom: 20px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">
+                        선택하신 정보가 맞습니까?
+                    </div>
+                </div>
+            `;
+            
             if (studentInfoText) {
-                studentInfoText.innerHTML = `
-                    <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
-                        학번: ${maskedStudentId}
-                    </div>
-                    <div style="font-size: 20px; margin-bottom: 30px;">
-                        <div style="font-weight: bold; color: #000; font-size: 24px;">
-                            공강실 좌석번호
-                        </div>
-                    </div>
-                `;
+                studentInfoText.innerHTML = initialContent;
             }
             
             // 모달 표시
