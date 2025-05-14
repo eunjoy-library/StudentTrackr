@@ -399,10 +399,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         nameInput.value = data.name;
                     }
                     
-                    // 마스킹 및 학년 정보
-                    const maskedName = maskName(data.name);
-                    const seatInfo = data.seat ? data.seat : '정보 없음';
-                    
                     // 학번 마스킹
                     const maskedStudentId = studentId.length > 5 ? 
                             studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
@@ -422,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const seatInfo = data.seat || '지정 좌석 없음';
                     
                     // 이름 마스킹 처리
-                    let maskedName = maskName(studentName);
+                    const maskedName = maskName(studentName);
                     
                     // 이미 출석했는지 여부 저장 (기본값으로 설정)
                     studentAlreadyAttended = false;
@@ -452,9 +448,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // 확인 버튼 상태 설정
-                    if (confirmButton) {
-                        confirmButton.disabled = btnDisabled;
-                        confirmButton.className = btnClass;
+                    if (modalConfirmBtn) {
+                        modalConfirmBtn.disabled = btnDisabled;
+                        modalConfirmBtn.className = `btn ${btnClass} btn-lg`;
                     }
                     
                     // 모달 표시
