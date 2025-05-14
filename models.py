@@ -21,17 +21,28 @@ class Attendance(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     @staticmethod
-    def add_attendance(student_id, name, seat, period):
+    def add_attendance(student_id, name, seat, period_text):
         """출석 기록 추가"""
-        attendance = Attendance()
-        attendance.student_id = student_id
-        attendance.name = name
-        attendance.seat = seat
-        attendance.period = period
-        
-        db.session.add(attendance)
+        today = datetime.now().date()
+        existing = Attendance.query.filter_by(
+            student_id=student_id,
+            period=period_text,
+            date=today
+        ).first()
+
+        if existing:
+            return  # 이미 출석한 경우 저장하지 않음
+
+        new_record = Attendance(
+            student_id=student_id,
+            name=name,
+            seat=seat,
+            period=period_text,
+            date=today
+        )
+        db.session.add(new_record)
         db.session.commit()
-        return attendance
+        return new_record
     
     @staticmethod
     def get_attendances_by_student(student_id):
