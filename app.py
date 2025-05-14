@@ -711,13 +711,27 @@ def delete_records():
             if student_id and date_str:
                 # 해당 학생의 해당 날짜 출석 기록 찾기
                 try:
-                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                    next_day = date_obj + timedelta(days=1)
+                    # 날짜 형식이 다양할 수 있으므로 여러 형식 시도
+                    try:
+                        # 기본 날짜 형식 (YYYY-MM-DD)
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    except ValueError:
+                        try:
+                            # 시간 정보가 포함된 형식 (YYYY-MM-DD HH:MM:SS)
+                            date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            # ISO 형식 (YYYY-MM-DDT00:00:00)
+                            date_parts = date_str.split('T')[0] if 'T' in date_str else date_str.split()[0]
+                            date_obj = datetime.strptime(date_parts, '%Y-%m-%d')
+                    
+                    # 날짜만 추출하여 당일 00:00:00부터 다음날 00:00:00 사이의 기록 조회
+                    start_of_day = datetime(date_obj.year, date_obj.month, date_obj.day, 0, 0, 0)
+                    next_day = start_of_day + timedelta(days=1)
                     
                     # 해당 날짜의 해당 학생 기록 모두 조회
                     attendances = Attendance.query.filter(
                         Attendance.student_id == student_id,
-                        Attendance.date >= date_obj,
+                        Attendance.date >= start_of_day,
                         Attendance.date < next_day
                     ).all()
                     
@@ -1058,8 +1072,11 @@ def delete_before_date():
             return redirect('/by_period')
             
         try:
-            # 기준 날짜 파싱
+            # 기준 날짜 파싱 - 입력 날짜는 ISO 형식(YYYY-MM-DD)이어야 함
             cutoff_date = datetime.strptime(date_str, '%Y-%m-%d')
+            
+            # 자정(00:00:00)으로 시간 설정
+            cutoff_date = datetime(cutoff_date.year, cutoff_date.month, cutoff_date.day, 0, 0, 0)
             
             # 데이터베이스에서 기준 날짜 이전의 출석 레코드 조회
             records_to_delete = Attendance.query.filter(Attendance.date < cutoff_date).all()
