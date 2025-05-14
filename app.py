@@ -194,8 +194,33 @@ def load_student_data():
     Returns a dictionary with student_id as key and (name, seat) as value
     """
     try:
+        # Excel 파일에서 학생 데이터 로드 (학번은 문자열로 처리)
         df = pd.read_excel(STUDENT_FILE, dtype={'학번': str})
-        return {row['학번'].strip(): (row['이름'].strip(), row['공강좌석번호']) for _, row in df.iterrows()}
+        
+        # 딕셔너리 생성 (오류 처리 포함)
+        student_data = {}
+        for _, row in df.iterrows():
+            # 필요한 열이 있는지 확인
+            if '학번' not in row or '이름' not in row:
+                continue
+                
+            student_id = str(row['학번'])
+            
+            # NaN 값 확인 및 처리
+            if pd.isna(student_id) or pd.isna(row['이름']):
+                continue
+                
+            # 문자열로 변환 및 공백 제거
+            student_id = str(student_id).strip()
+            name = str(row['이름']).strip()
+            
+            # 공강좌석번호가 없는 경우 빈 문자열로 설정
+            seat = str(row['공강좌석번호']) if '공강좌석번호' in row and not pd.isna(row['공강좌석번호']) else ''
+            
+            # 딕셔너리에 추가
+            student_data[student_id] = (name, seat)
+            
+        return student_data
     except Exception as e:
         logging.error(f"[오류] 학생 정보를 불러올 수 없습니다: {e}")
         flash(f"학생 정보를 불러올 수 없습니다. 관리자에게 문의하세요: {e}", "danger")
@@ -441,10 +466,17 @@ def export_csv():
     # Excel용 CSV 파일 생성 (UTF-8 with BOM)
     temp_file = 'temp_export.csv'
     try:
-        # 원본 데이터 읽기
-        with open(FILENAME, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            data = list(reader)
+        # 데이터베이스에서 모든 출석 기록 가져오기
+        attendances = load_attendance()
+        
+        # 헤더 설정
+        fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+        
+        # 데이터 준비
+        data = [fieldnames]  # 헤더 행
+        for record in attendances:
+            row = [record['출석일'], record['교시'], record['학번'], record['이름'], record['공강좌석번호']]
+            data.append(row)
             
         # UTF-8 with BOM으로 새 파일 작성
         with open(temp_file, 'w', newline='', encoding='utf-8-sig') as f:
