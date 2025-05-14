@@ -403,25 +403,21 @@ document.addEventListener('DOMContentLoaded', function () {
             // 먼저 로딩 메시지와 함께 모달 표시
             const studentInfoText = document.getElementById('studentInfoText');
             if (studentInfoText) {
-                studentInfoText.innerHTML = `
-                    <div style="text-align: center;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <div style="margin-top: 10px;">학생 정보를 확인 중입니다...</div>
-                    </div>
-                `;
+                // 로딩 스피너 대신 빈 상태로 시작
+                studentInfoText.innerHTML = ``;
             }
             
             // 모달 미리 표시
             customModal.style.display = 'block';
             
-            // 학생 정보 조회
+            // 학생 정보 조회 (최대한 빠르게 처리하기 위해 설정 추가)
             fetch(`/lookup_name?student_id=${studentId}`, {
                 // 캐시 방지
                 cache: 'no-store',
                 // 중요도 높게 설정
-                priority: 'high'
+                priority: 'high',
+                // 빠른 응답을 위한 timeout 설정
+                signal: AbortSignal.timeout(5000) // 5초 timeout
             })
                 .then(response => response.json())
                 .then(data => {
