@@ -468,12 +468,17 @@ def export_csv():
         flash("관리자 로그인이 필요합니다.", "danger")
         return redirect('/admin')
         
-    # Excel용 CSV 파일 생성 (UTF-8 with BOM)
+    # 임시 CSV 파일 생성 (UTF-8 with BOM 인코딩)
     temp_file = 'temp_export.csv'
     try:
         # 데이터베이스에서 모든 출석 기록 가져오기
         attendances = load_attendance()
         
+        # 데이터가 없는 경우 처리
+        if not attendances:
+            flash("내보낼 출석 기록이 없습니다.", "warning")
+            return redirect(url_for('list_attendance'))
+            
         # 헤더 설정
         fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
         
@@ -483,16 +488,16 @@ def export_csv():
             row = [record['출석일'], record['교시'], record['학번'], record['이름'], record['공강좌석번호']]
             data.append(row)
             
-        # UTF-8 with BOM으로 새 파일 작성
+        # UTF-8 with BOM으로 임시 파일 작성
         with open(temp_file, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f, quoting=csv.QUOTE_ALL)
             writer.writerows(data)
             
-        # 파일 전송
+        # 파일 전송 (한글 파일명 사용)
         response = send_file(
             temp_file, 
             as_attachment=True, 
-            download_name="attendance.csv",
+            download_name="도서실_출석기록.csv",
             mimetype='text/csv'
         )
         
@@ -1002,70 +1007,23 @@ def delete_before_date():
             # 기준 날짜 파싱
             cutoff_date = datetime.strptime(date_str, '%Y-%m-%d')
             
-            # 모든 출석 데이터 불러오기
-            all_records = load_attendance()
+            # 데이터베이스에서 기준 날짜 이전의 출석 레코드 조회
+            records_to_delete = Attendance.query.filter(Attendance.date < cutoff_date).all()
             
-            # 백업 파일에 이미 데이터가 있는지 확인
-            backup_exists = os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) > 0
+            # 삭제할 레코드 개수 확인
+            delete_count = len(records_to_delete)
             
-            # 백업 파일 모드 결정 (새 파일 또는 추가)
-            backup_mode = 'a' if backup_exists else 'w'
-            
-            # 삭제 대상 레코드와 유지할 레코드 분류
-            records_to_delete = []
-            records_to_keep = []
-            
-            for record in all_records:
-                date_str = record.get('출석일', '')
-                if ' ' in date_str:  # 날짜와 시간 있는 형식 (2025-05-09 10:57:36)
-                    attendance_date = datetime.strptime(date_str.split(' ')[0], '%Y-%m-%d')
-                else:  # 날짜만 있는 형식 (2025-05-09)
-                    try:
-                        attendance_date = datetime.strptime(date_str, '%Y-%m-%d')
-                    except ValueError:
-                        # 날짜 파싱 실패 시 현재 날짜로 처리 (= 유지)
-                        records_to_keep.append(record)
-                        continue
+            if delete_count > 0:
+                # 삭제할 각 레코드 처리
+                for attendance in records_to_delete:
+                    # 로깅
+                    logging.info(f"Deleting record: 학번={attendance.student_id}, 날짜={attendance.date}")
+                    
+                    # 레코드 삭제
+                    Attendance.delete_attendance(attendance.id)
                 
-                # 기준 날짜 이전인지 확인
-                if attendance_date < cutoff_date:
-                    records_to_delete.append(record)
-                else:
-                    records_to_keep.append(record)
-            
-            # 백업 파일에 삭제 대상 레코드 저장
-            with open(BACKUP_FILE, backup_mode, newline='', encoding='utf-8') as backup_file:
-                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-                backup_writer = csv.DictWriter(backup_file, fieldnames=fieldnames)
-                
-                # 새 파일인 경우 헤더 작성
-                if not backup_exists:
-                    backup_writer.writeheader()
-                
-                # 삭제할 레코드 백업
-                for record in records_to_delete:
-                    backup_writer.writerow(record)
-                    logging.info(f"Marking for deletion: 학번={record.get('학번')}, 날짜={record.get('출석일')}, 교시={record.get('교시')}")
-            
-            logging.info(f"Backing up {len(records_to_delete)} records to {BACKUP_FILE} before deletion")
-            
-            # 원본 파일 업데이트 (삭제 후 유지할 레코드만 저장)
-            with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(records_to_keep)
-                
-            # Excel 호환 파일도 업데이트
-            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as excel_file:
-                excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames)
-                excel_writer.writeheader()
-                excel_writer.writerows(records_to_keep)
-                
-            logging.info(f"Saving {len(records_to_keep)} records after deletion (removed {len(records_to_delete)} records)")
-            
-            if records_to_delete:
-                flash(f"✅ {date_str} 이전의 {len(records_to_delete)}개 출석 기록이 삭제되었습니다.", "success")
+                logging.info(f"Deleted {delete_count} records before {date_str}")
+                flash(f"✅ {date_str} 이전의 {delete_count}개 출석 기록이 삭제되었습니다.", "success")
             else:
                 flash(f"⚠️ {date_str} 이전의 출석 기록이 없습니다.", "warning")
                 
