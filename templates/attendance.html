@@ -420,9 +420,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 이미 출석했는지 여부 저장
                     studentAlreadyAttended = data.already_attended;
                     
-                    // 기본 내용 (학번 정보 제거, 이름과 좌석번호만 표시)
+                    // 기본 내용 (학번 정보 제거, 이름과 좌석번호만 표시) - 폰트 크기 축소
                     const baseContent = `
-                        <div style="font-size: 24px; font-weight: bold; color: #000;">
+                        <div style="font-size: 20px; font-weight: bold; color: #000;">
                             <div style="margin-bottom: 15px;">이름: ${maskedName} 님</div>
                             <div>공강실 좌석번호: ${seatInfo}</div>
                         </div>`;
@@ -500,9 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `;
                         btnDisabled = false;
                         btnClass = 'btn-primary';
-                        
-                        // 성공 소리 재생
-                        playSuccessSound();
+                        // 모달창이 뜰 때는 소리가 나지 않도록 제거
                     }
                     
                     // 모달 내용 설정
