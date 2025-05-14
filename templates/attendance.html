@@ -407,40 +407,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 studentInfoText.innerHTML = ``;
             }
             
-            try {
-                // 학번으로 즉시 모달 표시 (API 응답 기다리지 않고)
-                const maskedStudentId = studentId.length > 5 ? 
-                        studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
-                        studentId;
-                        
-                studentInfoText.innerHTML = `
-                    <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
-                        학번: ${maskedStudentId}
+            // 학번으로 즉시 모달 표시 (API 응답 기다리지 않고)
+            const maskedStudentId = studentId.length > 5 ? 
+                    studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
+                    studentId;
+            
+            studentInfoText.innerHTML = `
+                <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
+                    학번: ${maskedStudentId}
+                </div>
+                <div style="font-size: 20px; margin-bottom: 30px;">
+                    <div style="font-weight: bold; color: #000; font-size: 24px;">
+                        공강실 좌석번호
                     </div>
-                    <div style="font-size: 20px; margin-bottom: 30px;">
-                        <div style="font-weight: bold; color: #000; font-size: 24px;">
-                            공강실 좌석번호
-                        </div>
-                    </div>
-                `;
+                </div>
+            `;
                 
-                // 모달 미리 표시
-                customModal.style.display = 'block';
-                
-                // 병렬로 API 호출 시작 (표시된 모달이 업데이트 됨)
-                fetch(`/lookup_name?student_id=${studentId}`, {
-                    // 캐시 방지
-                    cache: 'no-store',
-                    // 중요도 높게 설정
-                    priority: 'high',
-                    // 빠른 응답을 위한 timeout 설정
-                    signal: AbortSignal.timeout(3000) // 3초 timeout
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // API 응답 전체를 콘솔에 출력
-                    console.log('API 응답 원본:', data);
-                    if (data.success) {
+            // 모달 미리 표시
+            customModal.style.display = 'block';
+            
+            // 병렬로 API 호출 시작 (표시된 모달이 업데이트 됨)
+            fetch(`/lookup_name?student_id=${studentId}`, {
+                // 캐시 방지
+                cache: 'no-store',
+                // 중요도 높게 설정
+                priority: 'high',
+                // 빠른 응답을 위한 timeout 설정
+                signal: AbortSignal.timeout(3000) // 3초 timeout
+            })
+            .then(response => response.json())
+            .then(data => {
+                // API 응답 전체를 콘솔에 출력
+                console.log('API 응답 원본:', data);
+                if (data.success) {
                         try {
                             // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
                             if (nameInput) nameInput.value = data.name;
@@ -581,10 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('학생 정보 조회 중 오류 발생', err);
                     alert('학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
                 });
-            } catch (outer_error) {
-                console.error('출석 처리 중 오류 발생:', outer_error);
-                alert('처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
-            }
+
         });
     }
     
