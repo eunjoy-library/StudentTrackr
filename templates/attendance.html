@@ -297,42 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // 학번 마스킹하여 모달에 표시
-            const maskedStudentId = studentId.length > 5 ? 
-                    studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
-                    studentId;
-            
-            // 학번 앞 두 자리로 학년 파악하기
-            let grade = "";
-            let gradeNumeric = 0;
-            if (studentId.length >= 2) {
-                gradeNumeric = parseInt(studentId.substring(0, 2));
-                if (gradeNumeric >= 10 && gradeNumeric <= 12) {
-                    // 10학년(1학년), 11학년(2학년), 12학년(3학년)
-                    grade = (gradeNumeric - 9) + "학년";
-                }
-            }
-            
-            // 이름 정보가 없을 때 보여줄 기본 내용
-            const initialContent = `
-                <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
-                    학번: ${maskedStudentId} ${grade ? `(${grade})` : ''}
-                </div>
-                <div style="font-size: 20px; margin-bottom: 20px;">
-                    <div style="font-weight: bold; margin-bottom: 10px;">
-                        선택하신 정보가 맞습니까?
-                    </div>
-                </div>
-            `;
-            
-            if (studentInfoText) {
-                studentInfoText.innerHTML = initialContent;
-            }
-            
-            // 모달 표시
-            if (customModal) {
-                customModal.style.display = 'block';
-            }
+            // API 호출 전에는 모달을 표시하지 않고, API 응답 이후에만 모달 표시하도록 수정
             
             // API 호출
             fetch(`/lookup_name?student_id=${studentId}`, {
@@ -352,8 +317,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 이미 출석했는지 여부 저장
                     studentAlreadyAttended = data.already_attended;
                     
-                    // 기본 내용
+                    // 학번 마스킹하여 표시
+                    const maskedStudentId = studentId.length > 5 ? 
+                            studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
+                            studentId;
+                    
+                    // 학번 앞 두 자리로 학년 파악하기
+                    let grade = "";
+                    let gradeNumeric = 0;
+                    if (studentId.length >= 2) {
+                        gradeNumeric = parseInt(studentId.substring(0, 2));
+                        if (gradeNumeric >= 10 && gradeNumeric <= 12) {
+                            // 10학년(1학년), 11학년(2학년), 12학년(3학년)
+                            grade = (gradeNumeric - 9) + "학년";
+                        }
+                    }
+                    
+                    // 기본 내용 (학번과 학년 정보 포함)
                     const baseContent = `
+                        <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
+                            학번: ${maskedStudentId} ${grade ? `(${grade})` : ''}
+                        </div>
                         <div style="font-size: 20px; font-weight: bold; color: #000;">
                             <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
                             <div>공강실 좌석번호: ${seatInfo}</div>
