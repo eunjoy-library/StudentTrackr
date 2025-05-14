@@ -78,95 +78,30 @@ PERIOD_SCHEDULE = {
 }
 
 # Initialize the files if they don't exist
-def initialize_files():
-    # 기본 파일과 백업 파일은 UTF-8로 저장
-    for file in [FILENAME, BACKUP_FILE]:
-        if not os.path.exists(file):
-            try:
-                with open(file, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(['출석일', '교시', '학번', '이름', '공강좌석번호'])
-                logging.info(f"Created file: {file}")
-            except Exception as e:
-                logging.error(f"Error creating file {file}: {e}")
+def initialize_database():
+    """
+    데이터베이스 초기화 및 검증 함수
+    - 기존 CSV 파일 기반 코드에서 데이터베이스 기반으로 전환
+    """
+    logging.info("데이터베이스 연결 확인 중...")
     
-    # 기본 파일이 있고 Excel 호환 파일이 없으면 Excel 호환 파일 생성
-    if os.path.exists(FILENAME) and not os.path.exists(EXCEL_FRIENDLY_FILE):
-        try:
-            # 기존 기록 읽기
-            with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                all_records = list(reader)
-                
-            # Excel용 파일 생성 (UTF-8-SIG/BOM 포함)
-            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(all_records)
-            logging.info(f"Created Excel-friendly file with {len(all_records)} records: {EXCEL_FRIENDLY_FILE}")
-        except Exception as e:
-            logging.error(f"Error creating Excel-friendly file from existing records {EXCEL_FRIENDLY_FILE}: {e}")
-    # Excel 파일이 있는데 기본 파일이 없으면 기본 파일 생성
-    elif not os.path.exists(FILENAME) and os.path.exists(EXCEL_FRIENDLY_FILE):
-        try:
-            # 엑셀 파일 읽기
-            with open(EXCEL_FRIENDLY_FILE, 'r', newline='', encoding='utf-8-sig') as f:
-                reader = csv.DictReader(f)
-                all_records = list(reader)
-                
-            # 기본 파일 생성
-            with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(all_records)
-            logging.info(f"Created main attendance file from Excel file with {len(all_records)} records: {FILENAME}")
-        except Exception as e:
-            logging.error(f"Error creating main file from Excel records {FILENAME}: {e}")
-    # 둘 다 있으면 일관성 체크 및 동기화
-    elif os.path.exists(FILENAME) and os.path.exists(EXCEL_FRIENDLY_FILE):
-        try:
-            # 두 파일 모두 읽기
-            with open(FILENAME, 'r', newline='', encoding='utf-8') as f1:
-                reader1 = csv.DictReader(f1)
-                main_records = list(reader1)
-                
-            with open(EXCEL_FRIENDLY_FILE, 'r', newline='', encoding='utf-8-sig') as f2:
-                reader2 = csv.DictReader(f2)
-                excel_records = list(reader2)
-                
-            # 레코드 수가 다르면 기본 파일 기준으로 Excel 파일 업데이트
-            if len(main_records) != len(excel_records):
-                logging.warning(f"Record count mismatch: main={len(main_records)}, excel={len(excel_records)}. Syncing...")
-                with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-                    fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-                    writer = csv.DictWriter(f, fieldnames=fieldnames)
-                    writer.writeheader()
-                    writer.writerows(main_records)
-                logging.info(f"Updated Excel-friendly file with {len(main_records)} records")
-        except Exception as e:
-            logging.error(f"Error checking file consistency: {e}")
-    # 둘 다 없으면 빈 파일 생성
-    else:
-        try:
-            # Excel용 파일 생성 (UTF-8-SIG/BOM 포함)
-            with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f)
-                writer.writerow(['출석일', '교시', '학번', '이름', '공강좌석번호'])
-            logging.info(f"Created empty Excel-friendly file: {EXCEL_FRIENDLY_FILE}")
-        except Exception as e:
-            logging.error(f"Error creating Excel-friendly file {EXCEL_FRIENDLY_FILE}: {e}")
-            
-    # 교시별 메모 파일 초기화
-    if not os.path.exists(MEMO_FILE):
-        try:
-            with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow(['날짜', '교시', '메모'])
-            logging.info(f"Created memo file: {MEMO_FILE}")
-        except Exception as e:
-            logging.error(f"Error creating memo file {MEMO_FILE}: {e}")
+    try:
+        # 데이터베이스 연결 확인
+        count = Attendance.query.count()
+        logging.info(f"데이터베이스 연결 성공: {count}개의 출석 기록 확인됨")
+        
+        # 현재 데이터베이스의 경고 기록 확인
+        warning_count = Warning.query.count()
+        logging.info(f"경고 기록: {warning_count}개")
+        
+        # 메모 기록 확인
+        memo_count = db.session.query(PeriodMemo).count()
+        logging.info(f"교시별 메모: {memo_count}개")
+        
+        return True
+    except Exception as e:
+        logging.error(f"데이터베이스 초기화 중 오류 발생: {e}")
+        return False
 
 # 교시별 메모 저장 함수
 def save_period_memo(date, period, memo_text):
@@ -211,7 +146,7 @@ def get_period_memo(date, period):
         logging.error(f"메모 조회 중 오류 발생: {e}")
         return ""
 
-initialize_files()
+initialize_database()
 
 def get_current_period():
     """
@@ -241,10 +176,8 @@ def get_current_period_attendance_count():
         return 0
         
     period_text = f"{current_period}교시"
-    now = datetime.now(KST)
-    today = now.strftime('%Y-%m-%d')
     
-    # 1. 데이터베이스에서 오늘의 현재 교시 출석 수 확인
+    # 데이터베이스에서 오늘의 현재 교시 출석 수 확인
     count = 0
     try:
         today_start = datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -262,19 +195,6 @@ def get_current_period_attendance_count():
         ).count()
     except Exception as e:
         logging.error(f"현재 교시 출석 인원 데이터베이스 조회 오류: {e}")
-    
-    # 2. CSV 파일에서도 호환성을 위해 확인 (이전 시스템과의 호환성 유지)
-    if os.path.exists(FILENAME):
-        try:
-            with open(FILENAME, newline='', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    attendance_date = row['출석일'].split(' ')[0]  # 날짜 부분만 가져오기
-                    if attendance_date == today and row['교시'] == period_text:
-                        # 데이터베이스에 없는 기록인지 확인하기 어려우므로, 모든 CSV 기록을 카운트
-                        count += 1
-        except Exception as e:
-            logging.error(f"현재 교시 출석 인원 CSV 조회 오류: {e}")
                 
     return count
 
@@ -347,34 +267,7 @@ def check_attendance(student_id, admin_override=False):
         if last_attendance_date is None or attendance.date.replace(tzinfo=None) > last_attendance_date:
             last_attendance_date = attendance.date.replace(tzinfo=None)
     
-    # 3. CSV 파일도 병행 확인 (이전 시스템과의 호환성 유지)
-    if os.path.exists(FILENAME):
-        with open(FILENAME, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            
-            for r in reader:
-                if r['학번'] == student_id:
-                    try:
-                        # 날짜에 시간 정보 포함 여부 확인 및 처리
-                        attendance_date = r['출석일']
-                        if ' ' in attendance_date:
-                            date_part = attendance_date.split(' ')[0]  # 날짜 부분만 추출
-                        else:
-                            date_part = attendance_date
-                            
-                        # 날짜만 파싱
-                        attend_time = datetime.strptime(date_part, '%Y-%m-%d')
-                        
-                        # 가장 최근 출석 날짜 업데이트
-                        if last_attendance_date is None or attend_time > last_attendance_date:
-                            last_attendance_date = attend_time
-                            
-                        # 이번 주(월~금) 출석 체크
-                        if attend_time >= this_week_monday and attend_time.weekday() <= 4:
-                            weekly_attendance_count += 1
-                                
-                    except ValueError:
-                        continue
+    # DB에서만 확인 (CSV 의존성 제거)
     
     # 결과 반환
     if weekly_attendance_count >= 1:
