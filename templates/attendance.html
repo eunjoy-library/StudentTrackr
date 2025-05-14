@@ -503,6 +503,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 모달창이 뜰 때는 소리가 나지 않도록 제거
                     }
                     
+                    // 모달 내용 설정
+                    if (studentInfoText) {
+                        studentInfoText.innerHTML = modalContent;
+                    }
+                    
                     // 버튼 상태 설정
                     if (modalConfirmBtn) {
                         modalConfirmBtn.disabled = btnDisabled;
