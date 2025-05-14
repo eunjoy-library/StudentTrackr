@@ -14,7 +14,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from dotenv import load_dotenv
 
 # 내부 모듈
-from models import db, Warning, Attendance
+from models import db, Warning, Attendance, PeriodMemo
 
 # ================== [환경 변수 로드] ==================
 
@@ -41,6 +41,19 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 db.init_app(app)
 with app.app_context():
     db.create_all()
+    # 데이터베이스 초기화 및 확인
+    try:
+        from models import PeriodMemo, Warning, Attendance
+        
+        # 데이터베이스 연결 확인
+        attendance_count = Attendance.query.count()
+        warning_count = Warning.query.count()
+        memo_count = db.session.query(PeriodMemo).count()
+        
+        logging.info(f"데이터베이스 연결 성공: 출석 기록 {attendance_count}개, "
+                    f"경고 기록 {warning_count}개, 메모 {memo_count}개")
+    except Exception as e:
+        logging.error(f"데이터베이스 초기화 중 오류 발생: {e}")
 
 # ================== [한국 시간대 설정 및 로그 설정] ==================
 
@@ -77,31 +90,7 @@ PERIOD_SCHEDULE = {
     6: (14, 25, 15, 50)
 }
 
-# Initialize the files if they don't exist
-def initialize_database():
-    """
-    데이터베이스 초기화 및 검증 함수
-    - 기존 CSV 파일 기반 코드에서 데이터베이스 기반으로 전환
-    """
-    logging.info("데이터베이스 연결 확인 중...")
-    
-    try:
-        # 데이터베이스 연결 확인
-        count = Attendance.query.count()
-        logging.info(f"데이터베이스 연결 성공: {count}개의 출석 기록 확인됨")
-        
-        # 현재 데이터베이스의 경고 기록 확인
-        warning_count = Warning.query.count()
-        logging.info(f"경고 기록: {warning_count}개")
-        
-        # 메모 기록 확인
-        memo_count = db.session.query(PeriodMemo).count()
-        logging.info(f"교시별 메모: {memo_count}개")
-        
-        return True
-    except Exception as e:
-        logging.error(f"데이터베이스 초기화 중 오류 발생: {e}")
-        return False
+# 데이터베이스 초기화는 앱 초기화 단계에서 실행
 
 # 교시별 메모 저장 함수
 def save_period_memo(date, period, memo_text):
@@ -146,7 +135,8 @@ def get_period_memo(date, period):
         logging.error(f"메모 조회 중 오류 발생: {e}")
         return ""
 
-initialize_database()
+# 데이터베이스 초기화는 app_context 내에서 실행해야 함
+# 초기화 작업은 앱 실행 시 별도로 수행
 
 def get_current_period():
     """
