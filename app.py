@@ -321,8 +321,10 @@ def load_attendance():
         attendances = Attendance.query.order_by(Attendance.date.desc()).all()
         for attendance in attendances:
             # 데이터베이스 모델을 딕셔너리로 변환
+            date_obj = attendance.date
             attendances_list.append({
-                '출석일': attendance.date.strftime('%Y-%m-%d %H:%M:%S'),
+                '출석일': date_obj.strftime('%Y-%m-%d'),
+                '출석일_표시': date_obj.strftime('%Y-%m-%d %H:%M'),  # 시:분까지만 표시
                 '교시': attendance.period,
                 '학번': attendance.student_id,
                 '이름': attendance.name,
