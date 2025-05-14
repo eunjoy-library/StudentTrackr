@@ -262,6 +262,7 @@ def check_attendance(student_id, admin_override=False):
     
     admin_override: 관리자 수동 추가 시 체크를 건너뛰는 옵션
     """
+    import time
     # 빠른 경로 처리: 관리자 옵션이나 교사 학번이면 즉시 통과
     
     # 관리자 수동 추가인 경우 체크 건너뛰기 (경고도 무시)
@@ -273,7 +274,10 @@ def check_attendance(student_id, admin_override=False):
         return False, None, False, None
     
     # 경고 여부 확인 (빠른 경로 확인 후에만 수행)
+    start_time = time.time()  # 실행 시작 시간 기록
     is_warned, warning_info = Warning.is_student_warned(student_id)
+    end_time = time.time()
+    print(f"[is_student_warned] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
         
     # 경고 받은 경우 출석 차단
     if is_warned:
@@ -291,7 +295,10 @@ def check_attendance(student_id, admin_override=False):
     this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
     
     # 이번 주 출석 기록 확인 (단일 쿼리로 처리)
+    start_time = time.time()  # 실행 시작 시간 기록
     week_attendance = Attendance.get_recent_attendance_for_week(student_id, this_week_monday)
+    end_time = time.time()
+    print(f"[get_recent_attendance_for_week] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
     
     # 이번 주 출석 여부
     weekly_attendance_exists = week_attendance is not None
@@ -302,7 +309,10 @@ def check_attendance(student_id, admin_override=False):
         last_attendance = week_attendance
     else:
         # 이번 주에 출석하지 않은 경우 최근 출석 기록만 확인
+        start_time = time.time()  # 실행 시작 시간 기록
         last_attendance = Attendance.get_recent_attendance(student_id, days=365)
+        end_time = time.time()
+        print(f"[get_recent_attendance] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
     
     # 날짜를 문자열로 변환
     last_date_str = last_attendance.date.strftime('%Y-%m-%d') if last_attendance else None
