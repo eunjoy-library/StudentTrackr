@@ -599,8 +599,8 @@ def by_period():
                 date_md = f"{date_obj.month}월{date_obj.day}일"
                 # 원래 날짜도 저장 (정렬용)
                 original_date = date_obj
-                # 메모 검색을 위한 원본 날짜 문자열
-                original_date_str = date
+                # 메모 검색을 위한 원본 날짜 문자열 - 시간 정보 없이 YYYY-MM-DD 형식으로 저장
+                original_date_str = date_obj.strftime('%Y-%m-%d')
             except ValueError:
                 date_md = date
                 original_date = datetime(1900, 1, 1)  # 날짜 변환 실패시 고정 날짜로
