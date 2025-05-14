@@ -15,8 +15,6 @@
     </div>
 </div>
 
-<!-- MP3 오디오 대신 웹 오디오 API를 사용하기 위해 요소 제거 -->
-
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow">
@@ -71,7 +69,7 @@
                     <input type="hidden" id="name" name="name" required>
                     <div class="d-grid mt-4">
                         <button type="submit" id="submitBtn" class="btn btn-primary btn-lg py-3" style="font-size: 1.25rem; font-weight: bold;" disabled>
-                            <i class="fas fa-check-circle me-2"></i><span id="submitBtnText">6교시 출석하기</span>
+                            <i class="fas fa-check-circle me-2"></i><span id="submitBtnText">출석하기</span>
                         </button>
                     </div>
                 </form>
@@ -89,511 +87,32 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // DOM 요소 가져오기
-    const form = document.getElementById('attendanceForm');
+document.addEventListener('DOMContentLoaded', function() {
+    // 기본 DOM 요소
     const studentIdInput = document.getElementById('student_id');
     const nameInput = document.getElementById('name');
     const submitBtn = document.getElementById('submitBtn');
     const submitBtnText = document.getElementById('submitBtnText');
+    const form = document.getElementById('attendanceForm');
+    const customModal = document.getElementById('customModal');
+    const studentInfoText = document.getElementById('studentInfoText');
     const modalConfirmBtn = document.getElementById('modalConfirmBtn');
     const modalCancelBtn = document.getElementById('modalCancelBtn');
-    const customModal = document.getElementById('customModal');
-    const currentPeriodElement = document.getElementById('currentPeriod');
     
-    // Web Audio API를 사용하여 사운드 생성
-    let audioContext;
+    // 오디오 컨텍스트
+    let audioContext = null;
     
-    // 오디오 컨텍스트 초기화 (사용자 상호작용 필요)
-    function initAudioContext() {
-        try {
-            if (audioContext) return; // 이미 초기화된 경우
-            
-            // AudioContext 생성
-            window.AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioContext = new AudioContext();
-            console.log('AudioContext 초기화 성공');
-        } catch (e) {
-            console.error('AudioContext 초기화 실패:', e);
-        }
-    }
+    // 현재 시간 표시 요소
+    const currentMonthDay = document.getElementById('currentMonthDay');
+    const currentPeriod = document.getElementById('currentPeriod');
+    const periodTimeRange = document.getElementById('periodTimeRange');
     
-    // 사용자 상호작용 시 오디오 초기화
-    document.addEventListener('click', function() {
-        initAudioContext();
-    }, { once: true });
-    
-    // 학생이 이미 출석했는지 여부를 저장하는 상태
+    // 학생이 이미 출석했는지 여부
     let studentAlreadyAttended = false;
     
-    // 교시에 따라 출석 버튼 텍스트 업데이트
-    function updateSubmitButtonText() {
-        if (currentPeriodElement) {
-            const currentPeriodText = currentPeriodElement.textContent;
-            if (currentPeriodText !== '시간 외' && submitBtnText) {
-                // 정규 시간인 경우 n교시 출석하기로 표시
-                submitBtnText.textContent = currentPeriodText + ' 출석하기';
-            } else {
-                // 그 외의 경우 기본 텍스트 유지
-                submitBtnText.textContent = '출석하기';
-            }
-        }
-    }
-    
-    // 교시 업데이트 시 호출할 함수
-    updateSubmitButtonText();
-    
-    // 모달 닫기 함수
-    function closeModal() {
-        customModal.style.display = 'none';
-    }
-    
-    // 성공 소리 재생 (띵동) - C5 → G4 주파수 (523Hz → 392Hz)
-    function playSuccessSound() {
-        try {
-            if (!audioContext) {
-                initAudioContext();
-                if (!audioContext) {
-                    console.error('AudioContext가 초기화되지 않아 소리를 재생할 수 없습니다.');
-                    return;
-                }
-            }
-            
-            const currentTime = audioContext.currentTime;
-            
-            // 첫 번째 음 (E4, 330Hz)
-            const oscillator1 = audioContext.createOscillator();
-            oscillator1.type = 'sine';
-            oscillator1.frequency.value = 330;
-            
-            // 두 번째 음 (B4, 494Hz)
-            const oscillator2 = audioContext.createOscillator();
-            oscillator2.type = 'sine';
-            oscillator2.frequency.value = 494;
-            
-            // 음량 조절을 위한 게인 노드
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.12; // 음량 조절 (0.0 ~ 1.0) - 전체적으로 소리 크기 줄임
-            
-            // 오실레이터와 게인 노드 연결
-            oscillator1.connect(gainNode);
-            oscillator2.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // 시작 및 종료 시간 설정
-            oscillator1.start(currentTime);
-            oscillator1.stop(currentTime + 0.2); // 0.2초 재생
-            
-            oscillator2.start(currentTime + 0.25); // 0.25초 후에 시작
-            oscillator2.stop(currentTime + 0.45); // 0.2초 재생
-            
-            console.log('성공 소리 재생됨 (띵동)');
-        } catch (e) {
-            console.error('소리 재생 중 오류 발생:', e);
-        }
-    }
-    
-
-    // 실패 소리 재생 (삐-) - 단일음 D5 주파수 (587Hz)로 변경
-    function playErrorSound() {
-        try {
-            if (!audioContext) {
-                initAudioContext();
-                if (!audioContext) {
-                    console.error('AudioContext가 초기화되지 않아 소리를 재생할 수 없습니다.');
-                    return;
-                }
-            }
-            
-            const currentTime = audioContext.currentTime;
-            
-            // 단일 음 (D5, 587Hz)
-            const oscillator = audioContext.createOscillator();
-            oscillator.type = 'sawtooth'; // 보다 날카로운 소리
-            oscillator.frequency.value = 587;
-            
-            // 음량 조절을 위한 게인 노드
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.08; // 음량 조절 (0.0 ~ 1.0) - 성공 소리보다 더 작게 조정
-            
-            // 오실레이터와 게인 노드 연결
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // 시작 및 종료 시간 설정 (짧게 삐-)
-            oscillator.start(currentTime);
-            oscillator.stop(currentTime + 0.4); // 0.4초 동안 단일음 재생
-            
-            console.log('실패 소리 재생됨 (삐-)');
-        } catch (e) {
-            console.error('소리 재생 중 오류 발생:', e);
-        }
-    }
-    
-    // 소리 종류에 따라 적절한 소리 재생
-    function playSound(type) {
-        if (type === 'successSound') {
-            playSuccessSound();
-        } else {
-            playErrorSound();
-        }
-    }
-    
-    // 모달 버튼 이벤트 리스너
-    if (modalCancelBtn) {
-        modalCancelBtn.addEventListener('click', closeModal);
-    }
-    
-    if (modalConfirmBtn) {
-        modalConfirmBtn.addEventListener('click', function() {
-            console.log('모달 확인 버튼 클릭됨');
-            console.log('버튼 비활성화 상태:', this.disabled);
-            console.log('studentAlreadyAttended 현재값:', studentAlreadyAttended);
-            
-            // 버튼이 비활성화되어 있거나 이미 출석한 학생이면 작동하지 않음
-            if (this.disabled || studentAlreadyAttended) {
-                console.log('버튼 클릭 취소: 비활성화 또는 이미 출석한 학생');
-                
-                // 이미 출석한 학생인 경우 에러 소리 재생
-                if (studentAlreadyAttended) {
-                    // Web Audio API를 사용하여 실패 소리 재생
-                    playErrorSound();
-                }
-                
-                closeModal();
-                return;
-            }
-            
-            // 모달 닫기
-            closeModal();
-            
-            // 성공 소리 재생 - Web Audio API 사용
-            playSuccessSound();
-            
-            // 폼 제출 (서버로 데이터 전송)
-            console.log('폼 제출 시작');
-            form.submit();
-            console.log('폼 제출 완료');
-        });
-    }
-    
-    // 이름 마스킹 함수 - 가운데 글자를 *로 대체
-    function maskName(name) {
-        if (!name || name.length <= 1) return name;
-        
-        // 한글은 보통 2~4글자 (2글자: 성+이름, 3글자: 성+이름2글자, 4글자: 복성+이름)
-        if (name.length === 2) {
-            // 2글자 이름은 두번째 글자만 *로 대체
-            return name.charAt(0) + '*';
-        } else if (name.length === 3) {
-            // 3글자 이름은 가운데 글자만 *로 대체
-            return name.charAt(0) + '*' + name.charAt(2);
-        } else if (name.length === 4) {
-            // 4글자 이름은 가운데 두 글자를 *로 대체
-            return name.charAt(0) + '**' + name.charAt(3);
-        } else {
-            // 5글자 이상인 경우 (외국인 이름 등) 가운데 부분만 *로 대체
-            const firstChar = name.charAt(0);
-            const lastChar = name.charAt(name.length - 1);
-            const maskedPart = '*'.repeat(name.length - 2);
-            return firstChar + maskedPart + lastChar;
-        }
-    }
-    
-    // 학번 입력 필드 이벤트 리스너 
-    if (studentIdInput) {
-        studentIdInput.addEventListener('input', function() {
-            const currentPeriodElement = document.getElementById('currentPeriod');
-            if (!currentPeriodElement) return;
-            
-            const currentPeriodText = currentPeriodElement.textContent;
-            const isRegularHours = currentPeriodText !== '시간 외';
-            
-            // 교시 확인 및 학번 길이 확인
-            if (isRegularHours && this.value.trim().length >= 5) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
-                submitBtn.classList.remove('btn-secondary');
-                submitBtn.classList.add('btn-primary');
-            } else {
-                // 시간 외인 경우 무조건 버튼 비활성화
-                if (!isRegularHours) {
-                    submitBtn.disabled = true;
-                    
-                    // 4교시인 경우 특별 메시지
-                    if (currentPeriodText.includes('4교시')) {
-                        // 아이콘과 텍스트 분리
-                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i><span id="submitBtnText">4교시는 도서실 이용 시간이 아닙니다</span>';
-                    } else {
-                        submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i><span id="submitBtnText">지금은 도서실 이용 시간이 아닙니다</span>';
-                    }
-                    submitBtn.classList.remove('btn-primary');
-                    submitBtn.classList.add('btn-secondary');
-                } else {
-                    // 정규 시간이지만 학번이 짧은 경우
-                    submitBtn.disabled = true;
-                    
-                    // 아이콘만 변경하고 텍스트는 유지
-                    const icon = submitBtn.querySelector('i');
-                    if (icon) {
-                        icon.className = 'fas fa-search me-2';
-                    }
-                    
-                    // 출석 정보 확인으로 텍스트 변경
-                    const textSpan = document.getElementById('submitBtnText');
-                    if (textSpan) {
-                        textSpan.textContent = '출석 정보 확인';
-                    }
-                    
-                    submitBtn.classList.remove('btn-secondary');
-                    submitBtn.classList.add('btn-primary');
-                    if (nameInput) nameInput.value = '';
-                    
-                    // 교시 업데이트
-                    updateSubmitButtonText();
-                }
-            }
-        });
-    }
-    
-    // 폼 제출 이벤트 리스너
-    if (form) {
-        form.addEventListener('submit', function(event) {
-            // 기본 제출 동작 방지
-            event.preventDefault();
-            
-            if (!studentIdInput || !modalConfirmBtn || !customModal) return;
-            
-            const studentId = studentIdInput.value.trim();
-            if (!studentId) {
-                alert('학번을 입력해주세요.');
-                return;
-            }
-            
-            // 현재 교시 확인
-            const currentPeriodElement = document.getElementById('currentPeriod');
-            if (!currentPeriodElement) return;
-            
-            const currentPeriodText = currentPeriodElement.textContent;
-            const isRegularHours = currentPeriodText !== '시간 외';
-            
-            // 시간 외인 경우 출석 불가
-            if (!isRegularHours) {
-                const studentInfoText = document.getElementById('studentInfoText');
-                if (studentInfoText) {
-                    studentInfoText.innerHTML = `
-                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                            지금은 도서실 이용 시간이 아닙니다.
-                        </div>
-                    `;
-                }
-                
-                // 모달 표시
-                customModal.style.display = 'block';
-                
-                // 에러 소리 재생
-                playErrorSound();
-                
-                return;
-            }
-            
-            // 먼저 로딩 메시지와 함께 모달 표시
-            const studentInfoText = document.getElementById('studentInfoText');
-            if (studentInfoText) {
-                // 로딩 스피너 대신 빈 상태로 시작
-                studentInfoText.innerHTML = ``;
-            }
-            
-            // 학번으로 즉시 모달 표시 (API 응답 기다리지 않고)
-            const maskedStudentId = studentId.length > 5 ? 
-                    studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
-                    studentId;
-                    
-            studentInfoText.innerHTML = `
-                <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
-                    학번: ${maskedStudentId}
-                </div>
-                <div style="font-size: 20px; margin-bottom: 30px;">
-                    <div style="font-weight: bold; color: #000; font-size: 24px;">
-                        공강실 좌석번호
-                    </div>
-                </div>
-            `;
-            
-            // 모달 미리 표시
-            customModal.style.display = 'block';
-            
-            // 병렬로 API 호출 시작 (표시된 모달이 업데이트 됨)
-            fetch(`/lookup_name?student_id=${studentId}`, {
-                // 캐시 방지
-                cache: 'no-store',
-                // 중요도 높게 설정
-                priority: 'high',
-                // 빠른 응답을 위한 timeout 설정
-                signal: AbortSignal.timeout(3000) // 3초 timeout
-            })
-            .then(response => response.json())
-            .then(data => {
-                // API 응답 전체를 콘솔에 출력
-                console.log('API 응답 원본:', data);
-                if (data.success) {
-                    try {
-                        // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
-                        if (nameInput) nameInput.value = data.name;
-                        
-                        // 모달에 정보 표시 (변수 할당 최소화로 최적화)
-                        const maskedName = maskName(data.name); // 마스킹된 이름
-                        const seatInfo = data.seat ? data.seat : '정보 없음';
-                        
-                        // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
-                        studentAlreadyAttended = data.already_attended;
-                        console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
-                        
-                        // 디버깅 정보 콘솔에 출력
-                        console.log('학생 데이터 확인:', {
-                            학번: studentId,
-                            이름: data.name,
-                            마스킹된이름: maskedName,
-                            좌석: seatInfo,
-                            이미출석함: data.already_attended,
-                            수용인원초과: data.capacity_exceeded,
-                            경고여부: data.is_warned,
-                            경고만료일: data.warning_expiry,
-                            경고메시지: data.warning_message
-                        });
-                        
-                        // 기본 모달 내용 생성
-                        const baseContent = `
-                            <div style="font-size: 20px; font-weight: bold; color: #000;">
-                                <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
-                                <div>공강실 좌석번호: ${seatInfo}</div>
-                            </div>`;
-                        
-                        // 경고 상태에 따라 다른 내용 표시
-                        if (data.is_warned) {
-                            // 경고 받은 학생인 경우
-                            studentInfoText.innerHTML = `
-                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                                    도서실 이용이 제한된 상태입니다.<br>
-                                    사유: ${data.warning_message || '도서실 이용 규정 위반'}<br>
-                                    해제일: ${data.warning_expiry || '관리자에게 문의하세요'}
-                                </div>
-                                ${baseContent}
-                            `;
-                        
-                            // 에러 소리 재생 (Web Audio API 사용, 1초 지연)
-                            setTimeout(playErrorSound, 100);
-                            console.log('경고 학생 에러 소리 재생 예약');
-                            
-                            // 확인 버튼 비활성화
-                            modalConfirmBtn.disabled = true;
-                            modalConfirmBtn.classList.add('btn-secondary');
-                            modalConfirmBtn.classList.remove('btn-primary');
-                        } else if (data.capacity_exceeded) {
-                            // 수용 인원 초과 시
-                            studentInfoText.innerHTML = `
-                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                    도서실 수용인원이 초과되었습니다(35명).<br>
-                                    4층 공강실로 올라가주세요!
-                                </div>
-                                ${baseContent}
-                            `;
-                        
-                            // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
-                            setTimeout(playErrorSound, 100);
-                            console.log('수용 인원 초과 에러 소리 재생 예약');
-                            
-                            // 확인 버튼 비활성화
-                            modalConfirmBtn.disabled = true;
-                            modalConfirmBtn.classList.add('btn-secondary');
-                            modalConfirmBtn.classList.remove('btn-primary');
-                        } else if (data.already_attended) {
-                            // 이미 출석한 경우 (관리자는 추가 출석 허용)
-                            const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
-                            const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
-                            
-                            // 클라이언트의 URL에서 현재 페이지가 관리자 추가 출석 페이지인지 확인
-                            const isAdminAddPage = window.location.pathname.includes('/admin_add_attendance');
-                            
-                            if (isAdmin && isAdminAddPage) {
-                                // 관리자 추가 출석 페이지에서만 관리자 메시지 표시
-                                studentInfoText.innerHTML = `
-                                    <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px;">
-                                        이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
-                                        ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
-                                    </div>
-                                    ${baseContent}
-                                `;
-                                
-                                // 관리자 추가 출석 페이지에서만 확인 버튼 활성화
-                                modalConfirmBtn.disabled = false;
-                                modalConfirmBtn.classList.remove('btn-secondary');
-                                modalConfirmBtn.classList.add('btn-warning'); // 경고색으로 구분
-                            } else {
-                                // 일반 학생 - 출석 제한 및 메시지 표시
-                                studentInfoText.innerHTML = `
-                                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                        이미 이번주에 출석하였습니다.<br>
-                                        4층 공강실로 올라가주세요!
-                                        ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                                    </div>
-                                    ${baseContent}
-                                `;
-                                
-                                // 에러 소리 재생
-                                playErrorSound();
-                                console.log('이미 출석한 학생 에러 소리 재생 예약');
-                                
-                                // 확인 버튼 비활성화
-                                modalConfirmBtn.disabled = true;
-                                modalConfirmBtn.classList.add('btn-secondary');
-                                modalConfirmBtn.classList.remove('btn-primary');
-                                modalConfirmBtn.classList.remove('btn-warning');
-                            }
-                        } else {
-                            // 처음 출석하는 경우
-                            studentInfoText.innerHTML = `
-                                선택하신 정보가 맞습니까?<br><br>
-                                ${baseContent}
-                            `;
-                            
-                            // 확인 버튼 활성화
-                            modalConfirmBtn.disabled = false;
-                            modalConfirmBtn.classList.add('btn-primary');
-                            modalConfirmBtn.classList.remove('btn-secondary');
-                        }
-                        
-                        // 모달 열기
-                        customModal.style.display = 'block';
-                    } catch (e) {
-                        console.error('학생 정보 처리 중 오류:', e);
-                        studentInfoText.innerHTML = `
-                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                학생 정보 처리 중 오류가 발생했습니다.<br>
-                                다시 시도해주세요.
-                            </div>
-                        `;
-                    }
-                } else {
-                    alert('입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.');
-                    if (nameInput) nameInput.value = '';
-                }
-            })
-            .catch(err => {
-                console.error('학생 정보 조회 중 오류 발생', err);
-                alert('학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
-            });
-        });
-    }
-    
-    // 시간 표시 업데이트 함수
+    // 1. 시간 및 교시 표시 업데이트 함수
     function updateTimeAndPeriod() {
-        const currentMonthDay = document.getElementById('currentMonthDay');
-        const currentPeriodElement = document.getElementById('currentPeriod');
-        const periodTimeRangeElement = document.getElementById('periodTimeRange');
-        const submitBtnText = document.getElementById('submitBtnText');
-        
-        if (!currentMonthDay || !currentPeriodElement || !periodTimeRangeElement) return;
+        if (!currentMonthDay || !currentPeriod || !periodTimeRange) return;
         
         const now = new Date();
         const month = now.getMonth() + 1;
@@ -612,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let periodText = '';
         let timeRangeText = '';
         
-        // 교시 계산 - 서버에서 받은 로직과 일치시키기
+        // 교시 계산
         const hourMin = hour * 60 + minute; // 현재 시간을 분 단위로 변환
 
         // 교시 정의
@@ -645,38 +164,299 @@ document.addEventListener('DOMContentLoaded', function () {
             timeRangeText = '주말은 도서실 이용이 불가합니다';
         }
         
-        // 4교시인 경우 버튼 비활성화 메시지 표시
-        if (periodText === '4교시' && submitBtnText) {
-            submitBtnText.textContent = '4교시는 도서실 이용 시간이 아닙니다';
-            submitBtn.disabled = true;
-            submitBtn.classList.remove('btn-primary');
-            submitBtn.classList.add('btn-secondary');
-        } else if (periodText === '시간 외' && submitBtnText) {
-            submitBtnText.textContent = '지금은 도서실 이용 시간이 아닙니다';
-            submitBtn.disabled = true;
-            submitBtn.classList.remove('btn-primary');
-            submitBtn.classList.add('btn-secondary');
-        } else if (submitBtnText && studentIdInput.value.trim().length < 5) {
-            // 정규 시간이지만 학번이 입력되지 않은 경우
-            submitBtnText.textContent = periodText + ' 출석하기';
-            submitBtn.disabled = true;
-        }
-        
         // 교시 정보 업데이트
-        currentPeriodElement.textContent = periodText;
+        currentPeriod.textContent = periodText;
+        periodTimeRange.textContent = timeRangeText;
         
-        // 교시 설명 업데이트
-        periodTimeRangeElement.textContent = timeRangeText;
-        
-        // 교시에 따라 출석 버튼 텍스트 업데이트
-        updateSubmitButtonText();
+        // 버튼 텍스트 업데이트
+        if (submitBtnText) {
+            if (periodText === '4교시') {
+                submitBtnText.textContent = '4교시는 도서실 이용 시간이 아닙니다';
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-secondary');
+            } else if (periodText === '시간 외') {
+                submitBtnText.textContent = '지금은 도서실 이용 시간이 아닙니다';
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-secondary');
+            } else {
+                submitBtnText.textContent = periodText + ' 출석하기';
+                // 학번이 입력된 경우만 활성화
+                if (studentIdInput && studentIdInput.value.trim().length >= 5) {
+                    submitBtn.disabled = false;
+                }
+                submitBtn.classList.remove('btn-secondary');
+                submitBtn.classList.add('btn-primary');
+            }
+        }
     }
     
-    // 페이지 로드 시 시간 업데이트
+    // 페이지 로드 시 시간 표시 업데이트
     updateTimeAndPeriod();
     
-    // 1분마다 시간 정보 업데이트
-    setInterval(updateTimeAndPeriod, 60000); // 1분(60,000ms)마다 갱신
+    // 1분마다 시간 표시 업데이트
+    setInterval(updateTimeAndPeriod, 60000);
+    
+    // 2. 학번 입력 관련 이벤트
+    if (studentIdInput) {
+        studentIdInput.addEventListener('input', function() {
+            const currentPeriodText = currentPeriod ? currentPeriod.textContent : '';
+            const isRegularHours = currentPeriodText !== '시간 외' && currentPeriodText !== '4교시';
+            
+            // 정규 시간이고 학번이 5자리 이상인 경우 버튼 활성화
+            if (isRegularHours && this.value.trim().length >= 5) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
+            } else if (!isRegularHours) {
+                // 시간 외인 경우 버튼 비활성화 유지
+                submitBtn.disabled = true;
+            } else {
+                // 정규 시간이지만 학번이 짧은 경우
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
+            }
+        });
+    }
+    
+    // 3. 모달 관련 함수
+    function closeModal() {
+        if (customModal) {
+            customModal.style.display = 'none';
+        }
+    }
+    
+    // 모달 취소 버튼 클릭 이벤트
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', closeModal);
+    }
+    
+    // 모달 확인 버튼 클릭 이벤트
+    if (modalConfirmBtn) {
+        modalConfirmBtn.addEventListener('click', function() {
+            // 이미 출석한 학생이면 모달만 닫기
+            if (studentAlreadyAttended) {
+                closeModal();
+                return;
+            }
+            
+            // 모달 닫기
+            closeModal();
+            
+            // 폼 제출
+            if (form) {
+                form.submit();
+            }
+        });
+    }
+    
+    // 4. 이름 마스킹 함수
+    function maskName(name) {
+        if (!name || name.length <= 1) return name;
+        
+        if (name.length === 2) {
+            return name.charAt(0) + '*';
+        } else if (name.length === 3) {
+            return name.charAt(0) + '*' + name.charAt(2);
+        } else if (name.length === 4) {
+            return name.charAt(0) + '**' + name.charAt(3);
+        } else {
+            const firstChar = name.charAt(0);
+            const lastChar = name.charAt(name.length - 1);
+            const maskedPart = '*'.repeat(name.length - 2);
+            return firstChar + maskedPart + lastChar;
+        }
+    }
+    
+    // 5. 폼 제출 이벤트
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const studentId = studentIdInput ? studentIdInput.value.trim() : '';
+            if (!studentId) {
+                alert('학번을 입력해주세요.');
+                return;
+            }
+            
+            // 시간 외인 경우 처리
+            const currentPeriodText = currentPeriod ? currentPeriod.textContent : '';
+            if (currentPeriodText === '시간 외' || currentPeriodText === '4교시') {
+                if (studentInfoText) {
+                    studentInfoText.innerHTML = `
+                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                            지금은 도서실 이용 시간이 아닙니다.
+                        </div>
+                    `;
+                }
+                
+                if (customModal) {
+                    customModal.style.display = 'block';
+                }
+                
+                return;
+            }
+            
+            // 학번 마스킹하여 모달에 표시
+            const maskedStudentId = studentId.length > 5 ? 
+                    studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
+                    studentId;
+                    
+            if (studentInfoText) {
+                studentInfoText.innerHTML = `
+                    <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
+                        학번: ${maskedStudentId}
+                    </div>
+                    <div style="font-size: 20px; margin-bottom: 30px;">
+                        <div style="font-weight: bold; color: #000; font-size: 24px;">
+                            공강실 좌석번호
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 모달 표시
+            if (customModal) {
+                customModal.style.display = 'block';
+            }
+            
+            // API 호출
+            fetch(`/lookup_name?student_id=${studentId}`, {
+                cache: 'no-store'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 이름 저장
+                    if (nameInput) {
+                        nameInput.value = data.name;
+                    }
+                    
+                    const maskedName = maskName(data.name);
+                    const seatInfo = data.seat ? data.seat : '정보 없음';
+                    
+                    // 이미 출석했는지 여부 저장
+                    studentAlreadyAttended = data.already_attended;
+                    
+                    // 기본 내용
+                    const baseContent = `
+                        <div style="font-size: 20px; font-weight: bold; color: #000;">
+                            <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
+                            <div>공강실 좌석번호: ${seatInfo}</div>
+                        </div>`;
+                        
+                    if (data.is_warned) {
+                        // 경고 받은 학생
+                        if (studentInfoText) {
+                            studentInfoText.innerHTML = `
+                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                                    도서실 이용이 제한된 상태입니다.<br>
+                                    사유: ${data.warning_message || '도서실 이용 규정 위반'}<br>
+                                    해제일: ${data.warning_expiry || '관리자에게 문의하세요'}
+                                </div>
+                                ${baseContent}
+                            `;
+                        }
+                        
+                        // 확인 버튼 비활성화
+                        if (modalConfirmBtn) {
+                            modalConfirmBtn.disabled = true;
+                            modalConfirmBtn.classList.add('btn-secondary');
+                            modalConfirmBtn.classList.remove('btn-primary');
+                        }
+                    } else if (data.capacity_exceeded) {
+                        // 수용 인원 초과
+                        if (studentInfoText) {
+                            studentInfoText.innerHTML = `
+                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                    도서실 수용인원이 초과되었습니다(35명).<br>
+                                    4층 공강실로 올라가주세요!
+                                </div>
+                                ${baseContent}
+                            `;
+                        }
+                        
+                        // 확인 버튼 비활성화
+                        if (modalConfirmBtn) {
+                            modalConfirmBtn.disabled = true;
+                            modalConfirmBtn.classList.add('btn-secondary');
+                            modalConfirmBtn.classList.remove('btn-primary');
+                        }
+                    } else if (data.already_attended) {
+                        // 이미 출석한 경우
+                        const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
+                        const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
+                        const isAdminAddPage = window.location.pathname.includes('/admin_add_attendance');
+                        
+                        if (isAdmin && isAdminAddPage) {
+                            // 관리자 추가 출석 페이지
+                            if (studentInfoText) {
+                                studentInfoText.innerHTML = `
+                                    <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px;">
+                                        이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
+                                        ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
+                                    </div>
+                                    ${baseContent}
+                                `;
+                            }
+                            
+                            // 확인 버튼 활성화 (관리자 권한)
+                            if (modalConfirmBtn) {
+                                modalConfirmBtn.disabled = false;
+                                modalConfirmBtn.classList.remove('btn-secondary');
+                                modalConfirmBtn.classList.add('btn-warning');
+                            }
+                        } else {
+                            // 일반 학생
+                            if (studentInfoText) {
+                                studentInfoText.innerHTML = `
+                                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                        이미 이번주에 출석하였습니다.<br>
+                                        4층 공강실로 올라가주세요!
+                                        ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
+                                    </div>
+                                    ${baseContent}
+                                `;
+                            }
+                            
+                            // 확인 버튼 비활성화
+                            if (modalConfirmBtn) {
+                                modalConfirmBtn.disabled = true;
+                                modalConfirmBtn.classList.add('btn-secondary');
+                                modalConfirmBtn.classList.remove('btn-primary');
+                                modalConfirmBtn.classList.remove('btn-warning');
+                            }
+                        }
+                    } else {
+                        // 처음 출석하는 경우
+                        if (studentInfoText) {
+                            studentInfoText.innerHTML = `
+                                선택하신 정보가 맞습니까?<br><br>
+                                ${baseContent}
+                            `;
+                        }
+                        
+                        // 확인 버튼 활성화
+                        if (modalConfirmBtn) {
+                            modalConfirmBtn.disabled = false;
+                            modalConfirmBtn.classList.add('btn-primary');
+                            modalConfirmBtn.classList.remove('btn-secondary');
+                        }
+                    }
+                } else {
+                    // 학생 정보를 찾을 수 없는 경우
+                    alert('입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.');
+                    closeModal();
+                    if (nameInput) nameInput.value = '';
+                }
+            })
+            .catch(err => {
+                console.error('학생 정보 조회 중 오류 발생', err);
+                alert('학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
+                closeModal();
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
