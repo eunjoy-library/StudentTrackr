@@ -6,7 +6,7 @@ packages = ["glibcLocales", "openssl", "postgresql"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = [python3 firebase_test.py]
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
 
 [workflows]
 runButton = "Project"
