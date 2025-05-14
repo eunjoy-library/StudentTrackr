@@ -687,19 +687,17 @@ def delete_records():
         if not records_to_delete:
             return jsonify({'success': False, 'error': '삭제할 기록이 선택되지 않았습니다.'}), 400
         
-        # 1. 데이터베이스에서 학생 기록 삭제 처리
-        db_deleted_count = 0
+        # 데이터베이스에서 학생 기록 삭제 처리
+        deleted_count = 0
         
-        # 먼저 JSON 형식으로 받은 records_to_delete 파싱
-        # records_set는 아래에서 생성되므로, 여기서는 데이터베이스만 처리
-        try:
-            for record in records_to_delete:
-                # JSON 형식으로 받은 경우 (교시별 보기 페이지에서 삭제 시)
-                student_id = record.get('student_id')
-                date_str = record.get('date')
-                
-                if student_id and date_str:
-                    # 해당 학생의 해당 날짜 출석 기록 찾기
+        for record in records_to_delete:
+            # JSON 형식으로 받은 경우 (교시별 보기 페이지에서 삭제 시)
+            student_id = record.get('student_id')
+            date_str = record.get('date')
+            
+            if student_id and date_str:
+                # 해당 학생의 해당 날짜 출석 기록 찾기
+                try:
                     date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                     next_day = date_obj + timedelta(days=1)
                     
@@ -713,99 +711,17 @@ def delete_records():
                     # 각 기록 삭제
                     for attendance in attendances:
                         Attendance.delete_attendance(attendance.id)
-                        db_deleted_count += 1
+                        deleted_count += 1
                         logging.info(f"데이터베이스에서 기록 삭제됨: 학번={student_id}, 날짜={date_str}")
-        except Exception as db_error:
-            logging.error(f"데이터베이스 기록 삭제 중 오류: {db_error}")
+                except Exception as db_error:
+                    logging.error(f"특정 기록 삭제 중 오류: {db_error}")
         
-        # 2. CSV 파일에서도 기록 삭제 (이전 시스템과의 호환성 유지)
-        if not os.path.exists(FILENAME):
-            return jsonify({
-                'success': True, 
-                'deleted_count': db_deleted_count,
-                'db_deleted': db_deleted_count,
-                'csv_deleted': 0, 
-                'message': f'{db_deleted_count}개의 기록이 데이터베이스에서 삭제되었습니다.'
-            }), 200
-        
-        # 기존 기록 읽기
-        with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            all_records = list(reader)
-            
-        # 백업 파일 생성 (로깅 추가)
-        logging.info(f"Backing up {len(all_records)} records to {BACKUP_FILE} before deletion")
-        with open(BACKUP_FILE, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(all_records)
-        
-        # 3. CSV 파일에서 삭제 처리
-        csv_deleted_count = 0
-        
-        # 삭제할 기록들을 파싱 (새로운 JSON 형식으로)
-        records_set = set()
-        for record in records_to_delete:
-            # 새로운 JSON 형식 - 학번, 날짜, 교시 정보를 가지고 있음
-            student_id = record.get('student_id')
-            date = record.get('date')
-            period = record.get('period')
-            
-            if student_id and date:
-                # 학번과 날짜로 식별
-                records_set.add((date, student_id, period))
-                logging.info(f"Marking for deletion: 학번={student_id}, 날짜={date}, 교시={period}")
-            
-        # 삭제되지 않을 기록만 필터링
-        filtered_records = []
-        for record in all_records:
-            key = (record['출석일'], record['학번'], record['교시'])
-            if key not in records_set:
-                filtered_records.append(record)
-        
-        # 필터링된 기록 저장 (기존 파일 삭제 후 저장)
-        logging.info(f"Saving {len(filtered_records)} records after deletion (removed {len(all_records) - len(filtered_records)} records)")
-        
-        # 기존 파일 삭제 후 새로 생성 (기록 충돌 방지)
-        if os.path.exists(FILENAME):
-            os.remove(FILENAME)
-            
-        with open(FILENAME, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(filtered_records)
-        
-        # Excel 호환 파일도 업데이트 (기존 파일 삭제 후 새로 생성)
-        if os.path.exists(EXCEL_FRIENDLY_FILE):
-            os.remove(EXCEL_FRIENDLY_FILE)
-            
-        with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-            fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(filtered_records)
-        
-        # 파일이 제대로 저장되었는지 확인
-        with open(FILENAME, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            check_records = list(reader)
-        
-        if len(check_records) != len(filtered_records):
-            logging.error(f"Record count mismatch after deletion: expected {len(filtered_records)}, got {len(check_records)}")
-            return jsonify({'success': False, 'error': '삭제 후 기록 수가 일치하지 않습니다.'}), 500
-            
-        csv_deleted_count = len(all_records) - len(filtered_records)
-        total_deleted = db_deleted_count + csv_deleted_count
-        
-        logging.info(f"Successfully deleted {total_deleted} records (DB: {db_deleted_count}, CSV: {csv_deleted_count})")
+        # 삭제 결과 반환
+        logging.info(f"총 {deleted_count}개의 기록이 삭제되었습니다.")
         return jsonify({
             'success': True, 
-            'message': f'{total_deleted}개의 기록이 삭제되었습니다 (DB: {db_deleted_count}, CSV: {csv_deleted_count}).',
-            'deleted_count': total_deleted,
-            'db_deleted': db_deleted_count,
-            'csv_deleted': csv_deleted_count
+            'message': f'{deleted_count}개의 기록이 삭제되었습니다.',
+            'deleted_count': deleted_count
         })
     
     except Exception as e:
