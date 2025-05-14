@@ -447,43 +447,43 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 모달에 정보 표시 (변수 할당 최소화로 최적화)
                         const maskedName = maskName(data.name); // 마스킹된 이름
                         const seatInfo = data.seat ? data.seat : '정보 없음';
-                            
-                            // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
-                            studentAlreadyAttended = data.already_attended;
-                            console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
-                            
-                            // 디버깅 정보 콘솔에 출력
-                            console.log('학생 데이터 확인:', {
-                                학번: studentId,
-                                이름: data.name,
-                                마스킹된이름: maskedName,
-                                좌석: seatInfo,
-                                이미출석함: data.already_attended,
-                                수용인원초과: data.capacity_exceeded,
-                                경고여부: data.is_warned,
-                                경고만료일: data.warning_expiry,
-                                경고메시지: data.warning_message
-                            });
-                            
-                            // 기본 모달 내용 생성
-                            const baseContent = `
-                                <div style="font-size: 20px; font-weight: bold; color: #000;">
-                                    <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
-                                    <div>공강실 좌석번호: ${seatInfo}</div>
-                                </div>`;
-                            
-                            // 경고 상태에 따라 다른 내용 표시
-                            if (data.is_warned) {
-                                // 경고 받은 학생인 경우
-                                studentInfoText.innerHTML = `
-                                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                                        도서실 이용이 제한된 상태입니다.<br>
-                                        사유: ${data.warning_message || '도서실 이용 규정 위반'}<br>
-                                        해제일: ${data.warning_expiry || '관리자에게 문의하세요'}
-                                    </div>
-                                    ${baseContent}
-                                `;
-                            
+                        
+                        // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
+                        studentAlreadyAttended = data.already_attended;
+                        console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
+                        
+                        // 디버깅 정보 콘솔에 출력
+                        console.log('학생 데이터 확인:', {
+                            학번: studentId,
+                            이름: data.name,
+                            마스킹된이름: maskedName,
+                            좌석: seatInfo,
+                            이미출석함: data.already_attended,
+                            수용인원초과: data.capacity_exceeded,
+                            경고여부: data.is_warned,
+                            경고만료일: data.warning_expiry,
+                            경고메시지: data.warning_message
+                        });
+                        
+                        // 기본 모달 내용 생성
+                        const baseContent = `
+                            <div style="font-size: 20px; font-weight: bold; color: #000;">
+                                <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
+                                <div>공강실 좌석번호: ${seatInfo}</div>
+                            </div>`;
+                        
+                        // 경고 상태에 따라 다른 내용 표시
+                        if (data.is_warned) {
+                            // 경고 받은 학생인 경우
+                            studentInfoText.innerHTML = `
+                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                                    도서실 이용이 제한된 상태입니다.<br>
+                                    사유: ${data.warning_message || '도서실 이용 규정 위반'}<br>
+                                    해제일: ${data.warning_expiry || '관리자에게 문의하세요'}
+                                </div>
+                                ${baseContent}
+                            `;
+                        
                             // 에러 소리 재생 (Web Audio API 사용, 1초 지연)
                             setTimeout(playErrorSound, 100);
                             console.log('경고 학생 에러 소리 재생 예약');
@@ -492,24 +492,24 @@ document.addEventListener('DOMContentLoaded', function () {
                             modalConfirmBtn.disabled = true;
                             modalConfirmBtn.classList.add('btn-secondary');
                             modalConfirmBtn.classList.remove('btn-primary');
-                            } else if (data.capacity_exceeded) {
-                                // 수용 인원 초과 시
-                                studentInfoText.innerHTML = `
-                                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
-                                        도서실 수용인원이 초과되었습니다(35명).<br>
-                                        4층 공강실로 올라가주세요!
-                                    </div>
-                                    ${baseContent}
-                                `;
+                        } else if (data.capacity_exceeded) {
+                            // 수용 인원 초과 시
+                            studentInfoText.innerHTML = `
+                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                    도서실 수용인원이 초과되었습니다(35명).<br>
+                                    4층 공강실로 올라가주세요!
+                                </div>
+                                ${baseContent}
+                            `;
+                        
+                            // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
+                            setTimeout(playErrorSound, 100);
+                            console.log('수용 인원 초과 에러 소리 재생 예약');
                             
-                                // 에러 소리 재생 (Web Audio API 사용, 0.1초 지연)
-                                setTimeout(playErrorSound, 100);
-                                console.log('수용 인원 초과 에러 소리 재생 예약');
-                                
-                                // 확인 버튼 비활성화
-                                modalConfirmBtn.disabled = true;
-                                modalConfirmBtn.classList.add('btn-secondary');
-                                modalConfirmBtn.classList.remove('btn-primary');
+                            // 확인 버튼 비활성화
+                            modalConfirmBtn.disabled = true;
+                            modalConfirmBtn.classList.add('btn-secondary');
+                            modalConfirmBtn.classList.remove('btn-primary');
                         } else if (data.already_attended) {
                             // 이미 출석한 경우 (관리자는 추가 출석 허용)
                             const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
                                     </div>
-                                    ${modalContent}
+                                    ${baseContent}
                                 `;
                                 
                                 // 관리자 추가 출석 페이지에서만 확인 버튼 활성화
@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         4층 공강실로 올라가주세요!
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
                                     </div>
-                                    ${modalContent}
+                                    ${baseContent}
                                 `;
                                 
                                 // 에러 소리 재생
@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             // 처음 출석하는 경우
                             studentInfoText.innerHTML = `
                                 선택하신 정보가 맞습니까?<br><br>
-                                ${modalContent}
+                                ${baseContent}
                             `;
                             
                             // 확인 버튼 활성화
@@ -568,15 +568,24 @@ document.addEventListener('DOMContentLoaded', function () {
                         
                         // 모달 열기
                         customModal.style.display = 'block';
-                    } else {
-                        alert('입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.');
-                        if (nameInput) nameInput.value = '';
+                    } catch (e) {
+                        console.error('학생 정보 처리 중 오류:', e);
+                        studentInfoText.innerHTML = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">
+                                학생 정보 처리 중 오류가 발생했습니다.<br>
+                                다시 시도해주세요.
+                            </div>
+                        `;
                     }
-                })
-                .catch(err => {
-                    console.error('학생 정보 조회 중 오류 발생', err);
-                    alert('학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
-                });
+                } else {
+                    alert('입력하신 학번을 찾을 수 없습니다.\n학번을 다시 확인해 주세요.');
+                    if (nameInput) nameInput.value = '';
+                }
+            })
+            .catch(err => {
+                console.error('학생 정보 조회 중 오류 발생', err);
+                alert('학생 정보를 불러오는 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.');
+            });
         });
     }
     
