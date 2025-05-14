@@ -72,12 +72,13 @@ def inject_now():
 
 
 # File configurations
-FILENAME = 'attendance.csv'
-BACKUP_FILE = 'attendance_backup.csv'
+# 데이터베이스 기반으로 전환 완료 - CSV 파일 참조 제거
+# FILENAME = 'attendance.csv'
+# BACKUP_FILE = 'attendance_backup.csv'
 LOG_FILE = 'attendance_error.log'
-EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
-STUDENT_FILE = 'students.xlsx'
-MEMO_FILE = 'period_memos.csv'
+# EXCEL_FRIENDLY_FILE = 'attendance_excel.csv'
+STUDENT_FILE = 'students.xlsx'  # 학생 정보는 여전히 Excel 파일에서 관리
+# MEMO_FILE = 'period_memos.csv'  # 메모는 데이터베이스로 이동
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")  # Default is "1234" if not set in environment
 
 # Period schedule configuration
@@ -206,8 +207,8 @@ def load_student_data():
                 
             student_id = str(row['학번'])
             
-            # NaN 값 확인 및 처리
-            if pd.isna(student_id) or pd.isna(row['이름']):
+            # NaN 값 확인 및 처리 (pd.isna()는 Series를 위한 함수이므로 값 비교로 수정)
+            if student_id == '' or student_id == 'nan' or not student_id or str(row['이름']) == '' or str(row['이름']) == 'nan':
                 continue
                 
             # 문자열로 변환 및 공백 제거
@@ -215,7 +216,11 @@ def load_student_data():
             name = str(row['이름']).strip()
             
             # 공강좌석번호가 없는 경우 빈 문자열로 설정
-            seat = str(row['공강좌석번호']) if '공강좌석번호' in row and not pd.isna(row['공강좌석번호']) else ''
+            seat = ''
+            if '공강좌석번호' in row:
+                seat_value = row['공강좌석번호']
+                if seat_value is not None and str(seat_value) != 'nan' and str(seat_value).strip() != '':
+                    seat = str(seat_value)
             
             # 딕셔너리에 추가
             student_data[student_id] = (name, seat)
