@@ -241,8 +241,7 @@ def check_attendance(student_id, admin_override=False):
     
     admin_override: 관리자 수동 추가 시 체크를 건너뛰는 옵션
     """
-    # 경고 여부 확인
-    is_warned, warning_info = Warning.is_student_warned(student_id)
+    # 빠른 경로 처리: 관리자 옵션이나 교사 학번이면 즉시 통과
     
     # 관리자 수동 추가인 경우 체크 건너뛰기 (경고도 무시)
     if admin_override:
@@ -251,9 +250,12 @@ def check_attendance(student_id, admin_override=False):
     # '3'으로 시작하는 학번은 항상 출석 가능 (경고도 무시)
     if student_id.startswith('3'):
         return False, None, False, None
+    
+    # 경고 여부 확인 (빠른 경로 확인 후에만 수행)
+    is_warned, warning_info = Warning.is_student_warned(student_id)
         
     # 경고 받은 경우 출석 차단
-    if is_warned and not admin_override:
+    if is_warned:
         return False, None, True, warning_info
     
     # 현재 한국 시간
@@ -267,40 +269,25 @@ def check_attendance(student_id, admin_override=False):
     this_week_monday = now - timedelta(days=days_since_monday)
     this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # 1. 데이터베이스에서 학생의 최근 출석 기록 확인 (1주일 이내)
-    recent_attendance = Attendance.get_recent_attendance(student_id, days=7)
+    # 이번 주 출석 기록 확인 (단일 쿼리로 처리)
+    week_attendance = Attendance.get_recent_attendance_for_week(student_id, this_week_monday)
     
-    # 2. 주간 출석 여부 확인 (월요일부터 금요일까지의 기간 동안)
-    # 데이터베이스에서 모든 출석 기록 가져오기
-    all_attendances = Attendance.get_attendances_by_student(student_id)
+    # 이번 주 출석 여부
+    weekly_attendance_exists = week_attendance is not None
     
-    # 가장 최근 출석 날짜 및 주간 출석 횟수 계산
-    last_attendance_date = None
-    weekly_attendance_count = 0
-    
-    for attendance in all_attendances:
-        # 출석 날짜가 이번 주 월요일 이후인지 확인
-        if attendance.date.replace(tzinfo=None) >= this_week_monday and attendance.date.replace(tzinfo=None).weekday() <= 4:
-            weekly_attendance_count += 1
-        
-        # 가장 최근 출석 날짜 업데이트
-        if last_attendance_date is None or attendance.date.replace(tzinfo=None) > last_attendance_date:
-            last_attendance_date = attendance.date.replace(tzinfo=None)
-    
-    # DB에서만 확인 (CSV 의존성 제거)
-    
-    # 결과 반환
-    if weekly_attendance_count >= 1:
-        # 날짜를 문자열로 변환
-        last_date_str = last_attendance_date.strftime('%Y-%m-%d') if last_attendance_date else None
-        return True, last_date_str, False, None
-    elif last_attendance_date:
-        # 최근 출석은 있지만 이번 주는 아닌 경우
-        last_date_str = last_attendance_date.strftime('%Y-%m-%d') if last_attendance_date else None
-        return False, last_date_str, False, None
+    # 최신 출석 날짜 (없으면 최근 7일 기준으로 확인)
+    last_attendance = None
+    if weekly_attendance_exists:
+        last_attendance = week_attendance
     else:
-        # 출석 기록이 없는 경우
-        return False, None, False, None
+        # 이번 주에 출석하지 않은 경우 최근 출석 기록만 확인
+        last_attendance = Attendance.get_recent_attendance(student_id, days=365)
+    
+    # 날짜를 문자열로 변환
+    last_date_str = last_attendance.date.strftime('%Y-%m-%d') if last_attendance else None
+    
+    # 결과 반환 (이번 주 출석 여부, 마지막 출석일, 경고 여부, 경고 정보)
+    return weekly_attendance_exists, last_date_str, False, None
 
 def load_attendance():
     """

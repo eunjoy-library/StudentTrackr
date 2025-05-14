@@ -57,6 +57,16 @@ class Attendance(db.Model):
             Attendance.student_id == student_id,
             Attendance.date >= recent_date
         ).order_by(Attendance.date.desc()).first()
+        
+    @staticmethod
+    def get_recent_attendance_for_week(student_id, week_start_date):
+        """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
+        week_end_date = week_start_date + timedelta(days=5)  # 월요일부터 금요일까지
+        return Attendance.query.filter(
+            Attendance.student_id == student_id,
+            Attendance.date >= week_start_date,
+            Attendance.date < week_end_date
+        ).first()
     
     @staticmethod
     def get_attendances_by_period(period, limit=50):
