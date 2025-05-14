@@ -945,37 +945,7 @@ def logout():
 @app.route('/lookup_name')
 def lookup_name():
     """
-    학생 정보 조회 API - 기본 정보만 반환하는 빠른 버전
-    """
-    # 학생 ID를 가져오고 캐싱된 학생 데이터에서 정보 검색
-    student_id = request.args.get('student_id')
-    
-    # 빠른 경로: 학생 ID가 없거나 유효하지 않은 경우 즉시 오류 반환
-    if not student_id:
-        return jsonify({'success': False, 'message': '유효한 학번을 입력해주세요.'})
-    
-    # 학생 정보 가져오기 (캐싱된 데이터)
-    student_data = load_student_data()
-    student_info = student_data.get(student_id)
-
-    # 학생 정보가 있는 경우 - 이름과 좌석 정보만 빠르게 반환
-    if student_info:
-        name = student_info[0]
-        seat = student_info[1] if len(student_info) > 1 else None
-        
-        # 기본 정보만 빠르게 반환 (모든 학번에 대해)
-        return jsonify({
-            'success': True, 
-            'name': name, 
-            'seat': seat
-        })
-    else:
-        return jsonify({'success': False, 'message': '학번이 존재하지 않습니다.'})
-
-@app.route('/verify_student')
-def verify_student():
-    """
-    학생 검증 API - 추가 검증 정보를 반환하는 상세 버전 (비동기 처리용)
+    학생 정보 조회 API - 최적화 버전
     """
     # 학생 ID를 가져오고 캐싱된 학생 데이터에서 정보 검색
     student_id = request.args.get('student_id')

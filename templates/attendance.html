@@ -399,6 +399,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         nameInput.value = data.name;
                     }
                     
+                    // 마스킹 및 학년 정보
+                    const maskedName = maskName(data.name);
+                    const seatInfo = data.seat ? data.seat : '정보 없음';
+                    
                     // 학번 마스킹
                     const maskedStudentId = studentId.length > 5 ? 
                             studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
@@ -413,15 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                     
-                    // 기본 정보 (성공한 경우) - lookup_name API는 이제 기본 정보만 반환
-                    const studentName = data.name;
-                    const seatInfo = data.seat || '지정 좌석 없음';
-                    
-                    // 이름 마스킹 처리
-                    const maskedName = maskName(studentName);
-                    
-                    // 이미 출석했는지 여부 저장 (기본값으로 설정)
-                    studentAlreadyAttended = false;
+                    // 이미 출석했는지 여부 저장
+                    studentAlreadyAttended = data.already_attended;
                     
                     // 기본 내용 (학번 정보 제거, 이름과 좌석번호만 표시) - 폰트 크기 축소, 텍스트 중앙 정렬
                     const baseContent = `
@@ -430,148 +427,80 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div>공강실 좌석번호: ${seatInfo}</div>
                         </div>`;
                     
-                    // 모달을 즉시 표시하고, 추가 검증은 백그라운드에서 수행
-                    // 처음에는 모든 사용자가 출석 가능한 것으로 표시
-                    let modalContent = `
-                        <div style="margin-bottom: 15px; font-weight: bold; text-align: center;">
-                            선택하신 정보가 맞습니까?
-                        </div>
-                        ${baseContent}
-                        <div id="status-message" style="font-weight: bold; text-align: center; margin-top: 15px; display: none;"></div>
-                    `;
+                    // 모달 내용과 버튼 상태 설정
+                    let modalContent = '';
                     let btnDisabled = false;
                     let btnClass = 'btn-primary';
                     
-                    // 모달 내용 설정
-                    if (studentInfoText) {
-                        studentInfoText.innerHTML = modalContent;
-                    }
-                    
-                    // 확인 버튼 상태 설정
-                    if (modalConfirmBtn) {
-                        modalConfirmBtn.disabled = btnDisabled;
-                        modalConfirmBtn.className = `btn ${btnClass} btn-lg`;
-                    }
-                    
-                    // 모달 표시
-                    if (customModal) {
-                        customModal.style.display = 'block';
-                    }
-                    
-                    // 백그라운드에서 추가 검증 수행 (비동기)
-                    if (!studentId.startsWith('3')) { // 3학년(교사)이 아닌 경우만 추가 검증
-                        // 상태 메시지 표시
-                        const statusMsg = document.getElementById('status-message');
-                        if (statusMsg) {
-                            statusMsg.innerHTML = '학생 정보를 확인하는 중...';
-                            statusMsg.style.color = '#0d6efd';
-                            statusMsg.style.display = 'block';
-                        }
+                    if (data.is_warned) {
+                        // 경고 받은 학생
+                        modalContent = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; font-size: 18px; text-align: center;">
+                                도서실 이용이 제한된 상태입니다.<br>
+                                사유: ${data.warning_message || '도서실 이용 규정 위반'}<br>
+                                해제일: ${data.warning_expiry || '관리자에게 문의하세요'}
+                            </div>
+                            ${baseContent}
+                        `;
+                        btnDisabled = true;
+                        btnClass = 'btn-secondary';
+                        playErrorSound();
                         
-                        // 추가 검증을 위한 API 호출
-                        fetch(`/verify_student?student_id=${studentId}`, {
-                            cache: 'no-store'
-                        })
-                        .then(response => response.json())
-                        .then(verifyData => {
-                            if (verifyData.success) {
-                                // 이미 출석했는지 여부 저장
-                                studentAlreadyAttended = verifyData.already_attended;
-                                
-                                // 상태 메시지 숨기기
-                                if (statusMsg) {
-                                    statusMsg.style.display = 'none';
-                                }
-                                
-                                // 검증 결과에 따라 모달 내용 업데이트
-                                if (verifyData.is_warned) {
-                                    // 경고 받은 학생
-                                    const warningMessage = `
-                                        <div style="color: #dc3545; font-weight: bold; margin-top: 15px; text-align: center;">
-                                            도서실 이용이 제한된 상태입니다.<br>
-                                            사유: ${verifyData.warning_message || '도서실 이용 규정 위반'}<br>
-                                            해제일: ${verifyData.warning_expiry || '관리자에게 문의하세요'}
-                                        </div>
-                                    `;
-                                    if (statusMsg) {
-                                        statusMsg.innerHTML = warningMessage;
-                                        statusMsg.style.display = 'block';
-                                    }
-                                    if (confirmButton) {
-                                        confirmButton.disabled = true;
-                                        confirmButton.className = 'btn-secondary';
-                                    }
-                                    playErrorSound();
-                                } else if (verifyData.capacity_exceeded) {
-                                    // 수용 인원 초과
-                                    const capacityMessage = `
-                                        <div style="color: #dc3545; font-weight: bold; margin-top: 15px; text-align: center;">
-                                            도서실 수용인원이 초과되었습니다(35명).<br>
-                                            4층 공강실로 올라가주세요!
-                                        </div>
-                                    `;
-                                    if (statusMsg) {
-                                        statusMsg.innerHTML = capacityMessage;
-                                        statusMsg.style.display = 'block';
-                                    }
-                                    if (confirmButton) {
-                                        confirmButton.disabled = true;
-                                        confirmButton.className = 'btn-secondary';
-                                    }
-                                    playErrorSound();
-                                } else if (verifyData.already_attended) {
-                                    // 이미 출석한 경우
-                                    const attendanceDate = verifyData.last_attendance_date ? `(${verifyData.last_attendance_date} 출석)` : '';
-                                    const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
-                                    const isAdminAddPage = window.location.pathname.includes('/admin_add_attendance');
-                                    
-                                    if (isAdmin && isAdminAddPage) {
-                                        // 관리자 추가 출석 페이지
-                                        const adminMessage = `
-                                            <div style="color: #0d6efd; font-weight: bold; margin-top: 15px; text-align: center;">
-                                                이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
-                                                ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
-                                            </div>
-                                        `;
-                                        if (statusMsg) {
-                                            statusMsg.innerHTML = adminMessage;
-                                            statusMsg.style.display = 'block';
-                                        }
-                                        if (confirmButton) {
-                                            confirmButton.disabled = false;
-                                            confirmButton.className = 'btn-warning';
-                                        }
-                                    } else {
-                                        // 일반 학생
-                                        const alreadyMessage = `
-                                            <div style="color: #dc3545; font-weight: bold; margin-top: 15px; text-align: center;">
-                                                이미 이번주에 출석하였습니다.<br>
-                                                4층 공강실로 올라가주세요!
-                                                ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
-                                            </div>
-                                        `;
-                                        if (statusMsg) {
-                                            statusMsg.innerHTML = alreadyMessage;
-                                            statusMsg.style.display = 'block';
-                                        }
-                                        if (confirmButton) {
-                                            confirmButton.disabled = true;
-                                            confirmButton.className = 'btn-secondary';
-                                        }
-                                        playErrorSound();
-                                    }
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('검증 오류:', error);
-                            // 오류 발생시 기본 상태 유지
-                            if (statusMsg) {
-                                statusMsg.innerHTML = '정보 확인 중 오류가 발생했습니다.';
-                                statusMsg.style.color = '#dc3545';
-                                statusMsg.style.display = 'block';
-                            }
-                        });
+                    } else if (data.capacity_exceeded) {
+                        // 수용 인원 초과
+                        modalContent = `
+                            <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                                도서실 수용인원이 초과되었습니다(35명).<br>
+                                4층 공강실로 올라가주세요!
+                            </div>
+                            ${baseContent}
+                        `;
+                        btnDisabled = true;
+                        btnClass = 'btn-secondary';
+                        playErrorSound();
+                        
+                    } else if (data.already_attended) {
+                        // 이미 출석한 경우
+                        const attendanceDate = data.last_attendance_date ? `(${data.last_attendance_date} 출석)` : '';
+                        const isAdmin = {{ 'true' if session.get('admin') else 'false' }};
+                        const isAdminAddPage = window.location.pathname.includes('/admin_add_attendance');
+                        
+                        if (isAdmin && isAdminAddPage) {
+                            // 관리자 추가 출석 페이지
+                            modalContent = `
+                                <div style="color: #0d6efd; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                                    이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
+                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
+                                </div>
+                                ${baseContent}
+                            `;
+                            btnDisabled = false;
+                            btnClass = 'btn-warning';
+                        } else {
+                            // 일반 학생
+                            modalContent = `
+                                <div style="color: #dc3545; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                                    이미 이번주에 출석하였습니다.<br>
+                                    4층 공강실로 올라가주세요!
+                                    ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
+                                </div>
+                                ${baseContent}
+                            `;
+                            btnDisabled = true;
+                            btnClass = 'btn-secondary';
+                            playErrorSound();
+                        }
+                    } else {
+                        // 처음 출석하는 경우
+                        modalContent = `
+                            <div style="margin-bottom: 15px; font-weight: bold; text-align: center;">
+                                선택하신 정보가 맞습니까?
+                            </div>
+                            ${baseContent}
+                        `;
+                        btnDisabled = false;
+                        btnClass = 'btn-primary';
+                        // 모달창이 뜰 때는 소리가 나지 않도록 제거
                     }
                     
                     // 버튼 상태 설정
