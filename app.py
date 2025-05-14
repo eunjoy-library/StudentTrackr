@@ -449,76 +449,24 @@ def load_attendance():
 
 def save_attendance(student_id, name, seat):
     """
-    Save attendance record to database and CSV files (with Korean time)
+    Save attendance record to database (with Korean time)
     """
-    file_exists = os.path.exists(FILENAME)
-    # 한국 시간 기준으로 현재 날짜와 시간 저장
-    now = datetime.now(KST)
-    # 출석일 형식: n월n일n시n분n초 (예: 5월7일14시30분22초)
-    now_date_time = now.strftime('%Y-%m-%d %H:%M:%S')  # 저장용 ISO 형식 (DB 호환성)
-    period = get_current_period()
-    period_text = f'{period}교시' if period > 0 else '시간 외'
-    
-    row = {
-        '출석일': now_date_time, 
-        '교시': period_text,
-        '학번': student_id, 
-        '이름': name, 
-        '공강좌석번호': seat
-    }
-
     try:
-        # 1. 데이터베이스에 출석 기록 저장
-        Attendance.add_attendance(student_id, name, seat, period_text)
+        # 한국 시간 기준으로 현재 날짜와 시간 저장
+        now = datetime.now(KST)
+        period = get_current_period()
+        period_text = f'{period}교시' if period > 0 else '시간 외'
         
-        # 2. CSV 파일에도 병행 저장 (이전 시스템과의 호환성 유지)
-        # Define fields in the proper order
-        fieldnames = ['출석일', '교시', '학번', '이름', '공강좌석번호']
+        # 데이터베이스에 출석 기록 저장
+        attendance = Attendance.add_attendance(student_id, name, seat, period_text)
         
-        # Main attendance file
-        with open(FILENAME, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(row)
-
-        # Backup file
-        with open(BACKUP_FILE, 'a', newline='', encoding='utf-8') as backup:
-            backup_writer = csv.DictWriter(backup, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-            if not os.path.exists(BACKUP_FILE) or os.path.getsize(BACKUP_FILE) == 0:
-                backup_writer.writeheader()
-            backup_writer.writerow(row)
-
-        # Excel-friendly file (UTF-8-SIG encoding with BOM)
-        try:
-            # 파일이 존재하는지 확인
-            file_exists = os.path.exists(EXCEL_FRIENDLY_FILE) and os.path.getsize(EXCEL_FRIENDLY_FILE) > 0
-            
-            # 파일이 없으면 헤더와 함께 새로 생성
-            if not file_exists:
-                with open(EXCEL_FRIENDLY_FILE, 'w', newline='', encoding='utf-8-sig') as excel_file:
-                    excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-                    excel_writer.writeheader()
-            
-            # 기존 파일에 행 추가
-            with open(EXCEL_FRIENDLY_FILE, 'a', newline='', encoding='utf-8-sig') as excel_file:
-                excel_writer = csv.DictWriter(excel_file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-                excel_writer.writerow(row)
-        except Exception as e:
-            logging.error(f"Excel-friendly 파일 저장 중 오류 발생: {e}")
-            
-        return True
-
-    except PermissionError:
-        error_msg = f"[{datetime.now(KST)}] PermissionError: Could not write to {FILENAME}\n"
-        with open(LOG_FILE, 'a', encoding='utf-8') as log:
-            log.write(error_msg)
-        flash("⚠️ 출석 파일이 열려 있어 저장할 수 없습니다. Excel 파일을 닫고 다시 시도해주세요.", "danger")
-        return False
+        if attendance:
+            return True
+        else:
+            # 이미 있는 경우 (중복 출석 등) - 경고 메시지 없이 성공으로 처리
+            return True
     except Exception as e:
-        error_msg = f"[{datetime.now(KST)}] Error: {str(e)}\n"
-        with open(LOG_FILE, 'a', encoding='utf-8') as log:
-            log.write(error_msg)
+        logging.error(f"출석 기록 저장 중 오류 발생: {e}")
         flash(f"⚠️ 오류가 발생했습니다: {str(e)}", "danger")
         return False
 
