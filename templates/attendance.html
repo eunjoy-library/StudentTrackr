@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         이 학생은 이미 출석하였지만, 관리자 권한으로 추가 출석이 가능합니다.
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate} 출석 기록 있음</div>` : ''}
                                     </div>
-                                    ${modalContent}
+                                    ${baseContent}
                                 `;
                                 
                                 // 관리자 추가 출석 페이지에서만 확인 버튼 활성화
@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         4층 공강실로 올라가주세요!
                                         ${attendanceDate ? `<div style="font-size: 16px; margin-top: 5px;">${attendanceDate}</div>` : ''}
                                     </div>
-                                    ${modalContent}
+                                    ${baseContent}
                                 `;
                                 
                                 // 에러 소리 재생
@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             // 처음 출석하는 경우
                             studentInfoText.innerHTML = `
                                 선택하신 정보가 맞습니까?<br><br>
-                                ${modalContent}
+                                ${baseContent}
                             `;
                             
                             // 확인 버튼 활성화
