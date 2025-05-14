@@ -189,11 +189,23 @@ def get_current_period_attendance_count():
                 
     return count
 
+# 전역 변수로 학생 데이터 캐시 저장 (속도 향상을 위해)
+_student_data_cache = None
+_last_student_data_load_time = None
+
 def load_student_data():
     """
-    Load student data from Excel file
+    Load student data from Excel file with caching
     Returns a dictionary with student_id as key and (name, seat) as value
     """
+    global _student_data_cache, _last_student_data_load_time
+    
+    # 캐시가 있고 마지막 로드 시간이 30분 이내인 경우 캐시 사용
+    current_time = datetime.now()
+    if _student_data_cache and _last_student_data_load_time and \
+       (current_time - _last_student_data_load_time).seconds < 1800:  # 30분 = 1800초
+        return _student_data_cache
+    
     try:
         # Excel 파일에서 학생 데이터 로드 (학번은 문자열로 처리)
         df = pd.read_excel(STUDENT_FILE, dtype={'학번': str})
@@ -207,28 +219,37 @@ def load_student_data():
                 
             student_id = str(row['학번'])
             
-            # NaN 값 확인 및 처리 (pd.isna()는 Series를 위한 함수이므로 값 비교로 수정)
-            if student_id == '' or student_id == 'nan' or not student_id or str(row['이름']) == '' or str(row['이름']) == 'nan':
+            # NaN 값이나 빈 값은 건너뛰기 (빠른 검사)
+            if not student_id or student_id == 'nan' or not row['이름'] or str(row['이름']) == 'nan':
                 continue
                 
             # 문자열로 변환 및 공백 제거
             student_id = str(student_id).strip()
             name = str(row['이름']).strip()
             
-            # 공강좌석번호가 없는 경우 빈 문자열로 설정
+            # 유효하지 않은 데이터 건너뛰기
+            if not student_id or not name:
+                continue
+            
+            # 공강좌석번호 확인 (간소화된 방식)
             seat = ''
-            if '공강좌석번호' in row:
-                seat_value = row['공강좌석번호']
-                if seat_value is not None and str(seat_value) != 'nan' and str(seat_value).strip() != '':
-                    seat = str(seat_value)
+            if '공강좌석번호' in row and row['공강좌석번호'] and str(row['공강좌석번호']) != 'nan':
+                seat = str(row['공강좌석번호']).strip()
             
             # 딕셔너리에 추가
             student_data[student_id] = (name, seat)
+        
+        # 캐시 업데이트
+        _student_data_cache = student_data
+        _last_student_data_load_time = current_time
             
         return student_data
     except Exception as e:
         logging.error(f"[오류] 학생 정보를 불러올 수 없습니다: {e}")
-        flash(f"학생 정보를 불러올 수 없습니다. 관리자에게 문의하세요: {e}", "danger")
+        # 캐시가 있으면 오류 발생해도 캐시 반환
+        if _student_data_cache:
+            return _student_data_cache
+        # 캐시가 없으면 빈 딕셔너리 반환
         return {}
 
 def check_attendance(student_id, admin_override=False):
@@ -923,17 +944,37 @@ def logout():
     return redirect('/')
 @app.route('/lookup_name')
 def lookup_name():
+    # 학생 ID를 가져오고 캐싱된 학생 데이터에서 정보 검색
     student_id = request.args.get('student_id')
+    
+    # 빠른 경로: 학생 ID가 없거나 유효하지 않은 경우 즉시 오류 반환
+    if not student_id:
+        return jsonify({'success': False, 'message': '유효한 학번을 입력해주세요.'})
+    
+    # 학생 정보 가져오기
     student_data = load_student_data()
     student_info = student_data.get(student_id)
 
+    # 학생 정보가 있는 경우
     if student_info:
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
         
-        # lookup_name API에서는 admin_override를 False로 설정
-        # - 관리자 여부와 관계없이 이미 출석한 학생은 이미 출석한 것으로 표시
-        # - 모달창에서 경고 메시지 표시를 위함
+        # 교사 학번의 경우 추가 검사 없이 바로 반환 (속도 향상)
+        if student_id.startswith('3'):
+            return jsonify({
+                'success': True, 
+                'name': name, 
+                'seat': seat,
+                'already_attended': False,
+                'last_attendance_date': None,
+                'capacity_exceeded': False,
+                'is_warned': False,
+                'warning_expiry': None,
+                'warning_message': None
+            })
+        
+        # 출석 및 경고 정보 확인 (최적화된 함수 사용)
         already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=False)
         
         # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
@@ -945,21 +986,20 @@ def lookup_name():
             except:
                 formatted_date = last_attendance_date
         
-        # 경고 정보 처리
+        # 경고 정보 처리 (경고가 있는 경우에만)
         warning_message = None
         warning_expiry = None
         if is_warned and warning_info:
-            # 경고 만료일 포맷팅
             warning_expiry = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
             warning_message = warning_info.reason or "도서실 이용 규정 위반"
         
-        # 현재 교시 출석 인원 수 확인 (최대 35명)
-        MAX_CAPACITY = 35
+        # 현재 교시 출석 인원 수 확인 (최대 35명) - 필요한 경우에만
         current_period = get_current_period()
         capacity_exceeded = False
         
-        # 현재 교시가 유효한 경우에만 확인
-        if current_period > 0:
+        # 현재 교시가 유효하고 이미 출석하지 않은 경우에만 인원 확인 (불필요한 쿼리 방지)
+        if current_period > 0 and not already_attended and not is_warned:
+            MAX_CAPACITY = 35
             current_count = get_current_period_attendance_count()
             capacity_exceeded = current_count >= MAX_CAPACITY
         
