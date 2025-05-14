@@ -171,69 +171,45 @@ def initialize_files():
 # 교시별 메모 저장 함수
 def save_period_memo(date, period, memo_text):
     """
-    교시별 메모를 저장하는 함수
+    교시별 메모를 저장하는 함수 (데이터베이스 사용)
     """
-    file_exists = os.path.exists(MEMO_FILE)
-    fieldnames = ['날짜', '교시', '메모']
+    from models import PeriodMemo
     
-    # 이미 존재하는 같은 날짜/교시의 메모가 있는지 확인
-    existing_memos = load_period_memos()
-    updated = False
-    
-    # 파일이 이미 있는 경우, 기존 메모를 업데이트하고 새 파일로 저장
-    if file_exists:
-        with open(MEMO_FILE, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            
-        for row in rows:
-            if row['날짜'] == date and row['교시'] == period:
-                row['메모'] = memo_text
-                updated = True
-                break
-                
-        if not updated:
-            rows.append({'날짜': date, '교시': period, '메모': memo_text})
-            
-        # 메모 파일 덮어쓰기
-        with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-    else:
-        # 파일이 없는 경우, 새로 생성하고 메모 추가
-        with open(MEMO_FILE, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow({'날짜': date, '교시': period, '메모': memo_text})
-    
-    return True
+    try:
+        # 데이터베이스에 메모 저장 (PeriodMemo 모델 사용)
+        result = PeriodMemo.save_memo(date, period, memo_text)
+        return result
+    except Exception as e:
+        logging.error(f"메모 저장 중 오류 발생: {e}")
+        return False
 
 # 모든 교시별 메모 로드 함수
 def load_period_memos():
     """
-    모든 교시별 메모를 로드하는 함수
+    모든 교시별 메모를 로드하는 함수 (데이터베이스 사용)
     """
-    if not os.path.exists(MEMO_FILE):
-        return []
-        
+    from models import PeriodMemo
+    
     try:
-        with open(MEMO_FILE, newline='', encoding='utf-8') as f:
-            return list(csv.DictReader(f))
+        # 데이터베이스에서 모든 메모 조회
+        return PeriodMemo.get_all_memos()
     except Exception as e:
-        logging.error(f"메모 파일 로드 중 오류 발생: {e}")
+        logging.error(f"메모 로드 중 오류 발생: {e}")
         return []
 
 # 특정 교시의 메모 조회 함수
 def get_period_memo(date, period):
     """
-    특정 날짜와 교시에 해당하는 메모를 반환하는 함수
+    특정 날짜와 교시에 해당하는 메모를 반환하는 함수 (데이터베이스 사용)
     """
-    memos = load_period_memos()
-    for memo in memos:
-        if memo['날짜'] == date and memo['교시'] == period:
-            return memo['메모']
-    return ""
+    from models import PeriodMemo
+    
+    try:
+        # 데이터베이스에서 특정 날짜/교시의 메모 조회
+        return PeriodMemo.get_memo(date, period)
+    except Exception as e:
+        logging.error(f"메모 조회 중 오류 발생: {e}")
+        return ""
 
 initialize_files()
 
@@ -415,17 +391,16 @@ def check_attendance(student_id, admin_override=False):
 
 def load_attendance():
     """
-    Load all attendance records 
+    Load all attendance records from database
     Returns a list of dictionaries containing attendance records
-    Now prioritizes database records but includes CSV records for compatibility
     """
-    # 1. 데이터베이스에서 출석 정보 로드
-    db_attendances = []
+    # 데이터베이스에서 출석 정보 로드
+    attendances_list = []
     try:
         attendances = Attendance.query.order_by(Attendance.date.desc()).all()
         for attendance in attendances:
             # 데이터베이스 모델을 딕셔너리로 변환
-            db_attendances.append({
+            attendances_list.append({
                 '출석일': attendance.date.strftime('%Y-%m-%d %H:%M:%S'),
                 '교시': attendance.period,
                 '학번': attendance.student_id,
@@ -434,18 +409,8 @@ def load_attendance():
             })
     except Exception as e:
         logging.error(f"데이터베이스 출석 기록 로드 오류: {e}")
-
-    # 2. CSV 파일에서도 출석 정보 로드 (이전 시스템과의 호환성 유지)
-    csv_attendances = []
-    if os.path.exists(FILENAME):
-        with open(FILENAME, newline='', encoding='utf-8') as f:
-            csv_attendances = list(csv.DictReader(f))
     
-    # 3. 두 소스의 기록을 결합 (중복 제거 없이 모두 반환)
-    # 시스템이 완전히 데이터베이스로 전환되면 CSV 부분은 제거 예정
-    all_attendances = db_attendances + csv_attendances
-    
-    return all_attendances
+    return attendances_list
 
 def save_attendance(student_id, name, seat):
     """
