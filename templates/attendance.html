@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 음량 조절을 위한 게인 노드
             const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.2; // 음량 조절 (0.0 ~ 1.0)
+            gainNode.gain.value = 0.12; // 음량 조절 (0.0 ~ 1.0) - 전체적으로 소리 크기 줄임
             
             // 오실레이터와 게인 노드 연결
             oscillator1.connect(gainNode);
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 음량 조절을 위한 게인 노드
             const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.2; // 음량 조절 (0.0 ~ 1.0)
+            gainNode.gain.value = 0.08; // 음량 조절 (0.0 ~ 1.0) - 성공 소리보다 더 작게 조정
             
             // 오실레이터와 게인 노드 연결
             oscillator.connect(gainNode);
