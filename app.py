@@ -944,6 +944,9 @@ def logout():
     return redirect('/')
 @app.route('/lookup_name')
 def lookup_name():
+    """
+    학생 정보 조회 API - 최적화 버전
+    """
     # 학생 ID를 가져오고 캐싱된 학생 데이터에서 정보 검색
     student_id = request.args.get('student_id')
     
@@ -951,7 +954,7 @@ def lookup_name():
     if not student_id:
         return jsonify({'success': False, 'message': '유효한 학번을 입력해주세요.'})
     
-    # 학생 정보 가져오기
+    # 학생 정보 가져오기 (캐싱된 데이터)
     student_data = load_student_data()
     student_info = student_data.get(student_id)
 
@@ -960,7 +963,7 @@ def lookup_name():
         name = student_info[0]
         seat = student_info[1] if len(student_info) > 1 else None
         
-        # 교사 학번의 경우 추가 검사 없이 바로 반환 (속도 향상)
+        # 빠른 경로 처리: 교사 학번
         if student_id.startswith('3'):
             return jsonify({
                 'success': True, 
@@ -974,41 +977,64 @@ def lookup_name():
                 'warning_message': None
             })
         
-        # 출석 및 경고 정보 확인 (최적화된 함수 사용)
-        already_attended, last_attendance_date, is_warned, warning_info = check_attendance(student_id, admin_override=False)
+        # 초기값 설정
+        already_attended = False
+        last_attendance_date_str = None
+        is_warned = False
+        warning_info = None
+        current_period = get_current_period()
+        capacity_exceeded = False
         
-        # 날짜를 더 읽기 쉬운 형식으로 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
-        formatted_date = None
-        if last_attendance_date:
-            try:
-                date_obj = datetime.strptime(last_attendance_date, '%Y-%m-%d')
-                formatted_date = date_obj.strftime('%Y년 %m월 %d일')
-            except:
-                formatted_date = last_attendance_date
+        # 병렬 처리를 위한 멀티스레딩 사용 없이 최적화
+        # 필요한 정보만 쿼리 (불필요한 처리 제거)
         
-        # 경고 정보 처리 (경고가 있는 경우에만)
+        # 1. 경고 정보 확인 (가장 빠른 쿼리)
+        is_warned, warning_info = Warning.is_student_warned(student_id)
+        
+        # 2. 경고가 없는 경우에만 출석 정보 확인
+        if not is_warned:
+            # 현재 한국 시간
+            now = datetime.now(KST).replace(tzinfo=None)
+            current_weekday = now.weekday()
+            
+            # 이번 주 월요일 계산
+            days_since_monday = current_weekday
+            this_week_monday = now - timedelta(days=days_since_monday)
+            this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # 이번 주 출석 여부 확인 (단일 쿼리)
+            week_attendance = Attendance.get_recent_attendance_for_week(student_id, this_week_monday)
+            already_attended = week_attendance is not None
+            
+            # 출석 기록이 있는 경우
+            if already_attended and week_attendance:
+                last_attendance_date_str = week_attendance.date.strftime('%Y년 %m월 %d일')
+            else:
+                # 최근 출석 정보 확인 (없을 수도 있음)
+                last_attendance = Attendance.get_recent_attendance(student_id, days=365)
+                if last_attendance:
+                    last_attendance_date_str = last_attendance.date.strftime('%Y년 %m월 %d일')
+            
+            # 3. 수용 인원 확인 (다른 조건 확인 후에만)
+            if current_period > 0 and not already_attended:
+                # 출석 가능한 경우에만 인원 확인
+                MAX_CAPACITY = 35
+                current_count = get_current_period_attendance_count()
+                capacity_exceeded = current_count >= MAX_CAPACITY
+        
+        # 경고 정보 처리
         warning_message = None
         warning_expiry = None
         if is_warned and warning_info:
             warning_expiry = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
             warning_message = warning_info.reason or "도서실 이용 규정 위반"
         
-        # 현재 교시 출석 인원 수 확인 (최대 35명) - 필요한 경우에만
-        current_period = get_current_period()
-        capacity_exceeded = False
-        
-        # 현재 교시가 유효하고 이미 출석하지 않은 경우에만 인원 확인 (불필요한 쿼리 방지)
-        if current_period > 0 and not already_attended and not is_warned:
-            MAX_CAPACITY = 35
-            current_count = get_current_period_attendance_count()
-            capacity_exceeded = current_count >= MAX_CAPACITY
-        
         return jsonify({
             'success': True, 
             'name': name, 
             'seat': seat,
             'already_attended': already_attended,
-            'last_attendance_date': formatted_date,
+            'last_attendance_date': last_attendance_date_str,
             'capacity_exceeded': capacity_exceeded,
             'is_warned': is_warned,
             'warning_expiry': warning_expiry,

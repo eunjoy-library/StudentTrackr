@@ -407,17 +407,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 studentInfoText.innerHTML = ``;
             }
             
+            // 학번으로 즉시 모달 표시 (API 응답 기다리지 않고)
+            const maskedStudentId = studentId.length > 5 ? 
+                    studentId.substring(0, 2) + '***' + studentId.substring(studentId.length-2) : 
+                    studentId;
+                    
+            studentInfoText.innerHTML = `
+                <div style="font-size: 22px; font-weight: bold; margin-bottom: 15px;">
+                    학번: ${maskedStudentId}
+                </div>
+                <div style="font-size: 20px; margin-bottom: 30px;">
+                    <div style="font-weight: bold; color: #000; font-size: 24px;">
+                        공강실 좌석번호
+                    </div>
+                </div>
+            `;
+            
             // 모달 미리 표시
             customModal.style.display = 'block';
             
-            // 학생 정보 조회 (최대한 빠르게 처리하기 위해 설정 추가)
+            // 병렬로 API 호출 시작 (표시된 모달이 업데이트 됨)
             fetch(`/lookup_name?student_id=${studentId}`, {
                 // 캐시 방지
                 cache: 'no-store',
                 // 중요도 높게 설정
                 priority: 'high',
                 // 빠른 응답을 위한 timeout 설정
-                signal: AbortSignal.timeout(5000) // 5초 timeout
+                signal: AbortSignal.timeout(3000) // 3초 timeout
             })
                 .then(response => response.json())
                 .then(data => {
@@ -427,39 +443,33 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 이름과 좌석 정보 저장 (원본 이름은 폼 제출용으로 저장)
                         if (nameInput) nameInput.value = data.name;
                         
-                        // 모달에 정보 표시
-                        const studentName = data.name;
-                        const maskedName = maskName(studentName); // 마스킹된 이름
+                        // 모달에 정보 표시 (변수 할당 최소화로 최적화)
+                        const maskedName = maskName(data.name); // 마스킹된 이름
                         const seatInfo = data.seat ? data.seat : '정보 없음';
-                        const alreadyAttended = data.already_attended;
-                        const capacityExceeded = data.capacity_exceeded; // 수용 인원 초과 여부
-                        const isWarned = data.is_warned; // 경고 여부
-                        const warningExpiry = data.warning_expiry; // 경고 만료일
-                        const warningMessage = data.warning_message; // 경고 사유
+                        
+                        // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
+                        studentAlreadyAttended = data.already_attended;
+                        console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
                         
                         // 디버깅 정보 콘솔에 출력
                         console.log('학생 데이터 확인:', {
                             학번: studentId,
-                            이름: studentName,
+                            이름: data.name,
                             마스킹된이름: maskedName,
                             좌석: seatInfo,
-                            이미출석함: alreadyAttended,
-                            수용인원초과: capacityExceeded,
-                            경고여부: isWarned,
-                            경고만료일: warningExpiry,
-                            경고메시지: warningMessage
+                            이미출석함: data.already_attended,
+                            수용인원초과: data.capacity_exceeded,
+                            경고여부: data.is_warned,
+                            경고만료일: data.warning_expiry,
+                            경고메시지: data.warning_message
                         });
                         
-                        // 모달 내용 설정
+                        // 모달 내용 즉시 설정 (불필요한 변수 선언 제거)
                         let modalContent = `
                             <div style="font-size: 20px; font-weight: bold; color: #000;">
                                 <div style="margin-bottom: 10px;">이름: ${maskedName} 님</div>
                                 <div>공강실 좌석번호: ${seatInfo}</div>
                             </div>`;
-                        
-                        // 이미 출석했는지 여부 저장 (모달 확인 버튼 클릭 시 사용)
-                        studentAlreadyAttended = alreadyAttended;
-                        console.log('studentAlreadyAttended 값 설정:', studentAlreadyAttended);
                         
                         if (isWarned) {
                             // 경고 받은 학생인 경우
