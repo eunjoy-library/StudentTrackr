@@ -272,6 +272,22 @@ def get_recent_attendance(student_id, days=7):
 def get_recent_attendance_for_week(student_id, week_start_date):
     """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
     try:
+        # 캐시에서 확인 (성능 최적화)
+        global _cache
+        
+        # 캐시 키 생성 (학생 ID + 주 시작일)
+        week_key = week_start_date.strftime('%Y-%m-%d')
+        cache_key = f'week_attendance_{student_id}_{week_key}'
+        
+        # 캐시 확인 (30초간 유효)
+        if 'student_attendance' in _cache and cache_key in _cache.get('last_updated', {}):
+            last_update = _cache['last_updated'].get(cache_key, 0)
+            # 캐시가 유효하면 캐싱된 결과 반환
+            if time.time() - last_update < 30:  # 30초 캐시
+                logging.info(f"주간 출석 캐시 적중: {student_id} ({week_key})")
+                if cache_key in _cache.get('student_attendance', {}):
+                    return _cache['student_attendance'][cache_key]
+                    
         week_end_date = week_start_date + timedelta(days=5)  # 월요일부터 금요일까지
         
         # 타임존 처리
@@ -299,8 +315,28 @@ def get_recent_attendance_for_week(student_id, week_start_date):
                 
                 # 특정 주의 기록만 확인
                 if doc_date >= week_start_date and doc_date < week_end_date:
-                    return firestore_to_dict(doc)
+                    result = firestore_to_dict(doc)
+                    
+                    # 결과 캐싱
+                    if 'student_attendance' not in _cache:
+                        _cache['student_attendance'] = {}
+                    if 'last_updated' not in _cache:
+                        _cache['last_updated'] = {}
+                        
+                    _cache['student_attendance'][cache_key] = result
+                    _cache['last_updated'][cache_key] = time.time()
+                    
+                    return result
                 
+        # 결과 없음 상태도 캐싱
+        if 'student_attendance' not in _cache:
+            _cache['student_attendance'] = {}
+        if 'last_updated' not in _cache:
+            _cache['last_updated'] = {}
+            
+        _cache['student_attendance'][cache_key] = None
+        _cache['last_updated'][cache_key] = time.time()
+        
         return None
     except Exception as e:
         logging.error(f"주간 출석 기록 조회 오류: {e}")
@@ -467,6 +503,22 @@ def get_all_memos():
 def is_student_warned(student_id):
     """학생이 현재 유효한 경고를 받았는지 확인"""
     try:
+        # 캐시에서 확인 (성능 최적화)
+        global _cache
+        
+        # 캐시 유효 시간 (10초로 설정 - 빠른 응답이 필요한 경우)
+        cache_ttl = 10
+        cache_key = f'warnings_{student_id}'
+        
+        # 캐시 확인
+        if student_id in _cache.get('warnings', {}):
+            last_update = _cache.get('last_updated', {}).get(cache_key, 0)
+            # 캐시가 유효하면 캐싱된 결과 반환
+            if time.time() - last_update < cache_ttl:
+                logging.info(f"경고 캐시 적중: {student_id}")
+                return _cache['warnings'][student_id]
+        
+        # 캐시에 없으면 DB에서 조회
         now = datetime.now()
         warnings_ref = db.collection('warnings')
         
@@ -483,8 +535,25 @@ def is_student_warned(student_id):
             
             # 활성화되었고 만료되지 않은 경고만 반환
             if is_active and expiry_date and expiry_date > now:
-                return True, firestore_to_dict(doc)
-        return False, None
+                result = (True, firestore_to_dict(doc))
+                # 결과 캐싱
+                if 'warnings' not in _cache:
+                    _cache['warnings'] = {}
+                if 'last_updated' not in _cache:
+                    _cache['last_updated'] = {}
+                _cache['warnings'][student_id] = result
+                _cache['last_updated'][cache_key] = time.time()
+                return result
+                
+        # 경고 없음 상태 캐싱
+        result = (False, None)
+        if 'warnings' not in _cache:
+            _cache['warnings'] = {}
+        if 'last_updated' not in _cache:
+            _cache['last_updated'] = {}
+        _cache['warnings'][student_id] = result
+        _cache['last_updated'][cache_key] = time.time()
+        return result
     except Exception as e:
         logging.error(f"경고 확인 오류: {e}")
         return False, None
