@@ -39,33 +39,29 @@ else:
 
 # ================== [Firebase 초기화] ==================
 db = None
-firebase_cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 
 try:
-    if firebase_cred_json:
-        cred_dict = json.loads(firebase_cred_json)
-        cred = credentials.Certificate(cred_dict)
-
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred)
-            db = firestore.client()
-            logging.info("Firebase 초기화 성공")
-        else:
-            # 이미 초기화된 앱이 있는 경우
-            db = firestore.client()
-            logging.info("Firebase 이미 초기화됨, 클라이언트 재사용")
-        
-        logging.info("✅ Firebase JSON 환경변수로 초기화 성공")
-        
-        # DB 연결 테스트
-        try:
-            test_ref = db.collection('test').document('connection')
-            test_ref.set({'timestamp': datetime.now()})
-            logging.info("Firebase 연결 테스트 성공")
-        except Exception as test_error:
-            logging.error(f"Firebase 연결 테스트 실패: {test_error}")
+    # ✅ 정확한 파일명 사용
+    cred = credentials.Certificate("firebase-key.json")
+    
+    # ✅ Firebase 앱 초기화
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+        logging.info("Firebase 앱 초기화 성공")
     else:
-        logging.warning("⚠️ 환경 변수 GOOGLE_APPLICATION_CREDENTIALS_JSON이 없습니다.")
+        logging.info("Firebase 앱 이미 초기화됨")
+    
+    # ✅ Firestore 객체 가져오기
+    db = firestore.client()
+    logging.info("✅ Firebase Firestore 클라이언트 생성 성공")
+    
+    # DB 연결 테스트
+    try:
+        test_ref = db.collection('test').document('connection')
+        test_ref.set({'timestamp': datetime.now()})
+        logging.info("Firebase 연결 테스트 성공")
+    except Exception as test_error:
+        logging.error(f"Firebase 연결 테스트 실패: {test_error}")
 except Exception as e:
     logging.error(f"❌ Firebase 초기화 오류: {e}")
 
