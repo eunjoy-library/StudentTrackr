@@ -21,7 +21,21 @@ from firebase_admin import credentials, firestore
 import models
 
 # ================== [환경 변수 로드] ==================
-load_dotenv()  # .env 파일에서 환경 변수 읽어오기
+# .env 파일에서 환경 변수 명시적으로 읽어오기
+load_dotenv(override=True)  # 기존 환경 변수 덮어쓰기
+
+# 환경 변수 값 확인 및 로그 출력
+firebase_api_key = os.environ.get("FIREBASE_API_KEY")
+firebase_project_id = os.environ.get("FIREBASE_PROJECT_ID")
+firebase_app_id = os.environ.get("FIREBASE_APP_ID")
+
+if firebase_api_key and firebase_project_id and firebase_app_id:
+    logging.info(f"Firebase 환경 변수 로드 성공: 프로젝트 ID = {firebase_project_id}")
+else:
+    logging.warning("Firebase 환경 변수 로드 실패. .env 파일을 확인하세요.")
+    logging.warning(f"API Key: {'설정됨' if firebase_api_key else '설정되지 않음'}")
+    logging.warning(f"Project ID: {'설정됨' if firebase_project_id else '설정되지 않음'}")
+    logging.warning(f"App ID: {'설정됨' if firebase_app_id else '설정되지 않음'}")
 
 # ================== [Firebase 초기화] ==================
 # Firebase 인증 정보 생성
@@ -48,16 +62,38 @@ if not os.path.exists(cred_path):
 # Firebase 초기화
 db = None
 try:
-    # 실제 키 있는 경우에만 Firebase 초기화
-    if 'FIREBASE_PROJECT_ID' in os.environ and os.environ.get('FIREBASE_PROJECT_ID'):
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        logging.info("Firebase 초기화 성공")
+    # 실제 키가 있는 경우에만 Firebase 초기화
+    if os.path.exists(cred_path) and firebase_project_id:
+        try:
+            # 이미 초기화되었는지 확인 (여러 번 초기화 방지)
+            existing_apps = firebase_admin._apps
+            if not existing_apps:
+                cred = credentials.Certificate(cred_path)
+                firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                logging.info("Firebase 초기화 성공")
+            else:
+                # 이미 초기화된 앱이 있는 경우
+                db = firestore.client()
+                logging.info("Firebase 이미 초기화됨, 클라이언트 재사용")
+                
+            # DB 연결 테스트
+            test_ref = db.collection('test').document('connection')
+            test_ref.set({'timestamp': firestore.SERVER_TIMESTAMP})
+            logging.info("Firebase 연결 테스트 성공")
+            
+        except Exception as init_error:
+            logging.error(f"Firebase 초기화 오류: {init_error}")
     else:
-        logging.warning("Firebase 프로젝트 ID가 설정되지 않아 Firebase 초기화를 건너뜁니다.")
+        missing = []
+        if not os.path.exists(cred_path):
+            missing.append(f"서비스 계정 키 파일({cred_path})")
+        if not firebase_project_id:
+            missing.append("FIREBASE_PROJECT_ID 환경 변수")
+        
+        logging.warning(f"Firebase 초기화 실패: {', '.join(missing)}이(가) 없습니다.")
 except Exception as e:
-    logging.error(f"Firebase 초기화 중 오류 발생: {e}")
+    logging.error(f"Firebase 초기화 중 예상치 못한 오류 발생: {e}")
 
 # ================== [Flask 객체 생성] ==================
 app = Flask(__name__)

@@ -1,32 +1,81 @@
 from datetime import datetime, timedelta
 import os
+import time
 import logging
 import firebase_admin
 from firebase_admin import firestore
-from firebase_admin.firestore import FieldFilter
+
+# Firebase FieldFilter 임포트 시도
+try:
+    from firebase_admin.firestore import FieldFilter
+except ImportError:
+    # 구 버전 Firebase 지원
+    FieldFilter = None
+
+# 시간 측정 데코레이터 (성능 모니터링)
+def timing_decorator(func):
+    """함수 실행 시간을 측정하는 데코레이터"""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = (end_time - start_time) * 1000  # ms로 변환
+        logging.info(f"[{func.__name__}] 실행 시간: {execution_time:.2f} ms")
+        return result
+    return wrapper
 
 # Firebase 데이터베이스 참조 가져오기
-try:
-    db = firestore.client()
-except ValueError:
-    # 앱이 초기화되지 않았을 때 예외 처리
-    db = None
+db = None
+MAX_RETRIES = 3
+retry_count = 0
+
+while db is None and retry_count < MAX_RETRIES:
+    try:
+        # Firebase 클라이언트 가져오기 시도
+        db = firestore.client()
+        logging.info("Firebase 데이터베이스 연결 성공 (models.py)")
+    except ValueError:
+        # 앱이 초기화되지 않았을 때 app.py에서 초기화될 때까지 대기
+        retry_count += 1
+        if retry_count < MAX_RETRIES:
+            logging.warning(f"Firebase 초기화 대기 중... (시도 {retry_count}/{MAX_RETRIES})")
+            time.sleep(1)  # 1초 대기 후 재시도
+        else:
+            logging.error("Firebase 초기화 실패 (models.py)")
+    except Exception as e:
+        logging.error(f"Firebase 연결 오류: {e}")
+        break
 
 # ================== [유틸리티 함수] ==================
 
+@timing_decorator
 def get_document_id(collection_ref, filters=None):
-    """필터 조건에 맞는the  문서 ID 찾기"""
-    if filters is None:
+    """필터 조건에 맞는 문서 ID 찾기 (Firebase 버전 호환성 개선)"""
+    if filters is None or collection_ref is None:
         return None
     
-    query = collection_ref
-    for field, op, value in filters:
-        query = query.where(filter=FieldFilter(field, op, value))
+    try:
+        query = collection_ref
+        
+        # Firebase 버전에 따라 다른 쿼리 방식 사용
+        if FieldFilter is not None:
+            # 신규 버전 Firebase - FieldFilter 사용 방식
+            for field, op, value in filters:
+                query = query.where(filter=FieldFilter(field, op, value))
+        else:
+            # 구 버전 Firebase - 직접 where 사용 방식
+            for field, op, value in filters:
+                query = query.where(field, op, value)
+                
+        # 결과 조회
+        docs = query.limit(1).get()
+        for doc in docs:
+            return doc.id
+        return None
     
-    docs = query.limit(1).get()
-    for doc in docs:
-        return doc.id
-    return None
+    except Exception as e:
+        logging.error(f"문서 ID 검색 오류: {e}")
+        return None
 
 
 def firestore_to_dict(doc):
