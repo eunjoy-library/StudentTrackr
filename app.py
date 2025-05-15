@@ -38,72 +38,46 @@ else:
     logging.warning(f"App ID: {'설정됨' if firebase_app_id else '설정되지 않음'}")
 
 # ================== [Firebase 초기화] ==================
-# Firebase 인증 정보 생성
-firebase_config = {
-    "type": "service_account",
-    "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
-    "private_key_id": "firebase-key-id",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
-    "client_email": f"firebase-adminsdk@{os.environ.get('FIREBASE_PROJECT_ID')}.iam.gserviceaccount.com",
-    "client_id": "client-id",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk%40{os.environ.get('FIREBASE_PROJECT_ID')}.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
-
-# 인증 키 파일이 없으면 환경 변수에서 생성
-cred_path = "firebase-key.json"
-if not os.path.exists(cred_path):
-    with open(cred_path, "w") as f:
-        json.dump(firebase_config, f)
-
-# Firebase 초기화
 db = None
+firebase_cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
 try:
-    # 실제 키가 있는 경우에만 Firebase 초기화
-    if os.path.exists(cred_path) and firebase_project_id:
-        try:
-            # 이미 초기화되었는지 확인 (여러 번 초기화 방지)
-            existing_apps = firebase_admin._apps
-            if not existing_apps:
-                cred = credentials.Certificate(cred_path)
-                firebase_admin.initialize_app(cred)
-                db = firestore.client()
-                logging.info("Firebase 초기화 성공")
-            else:
-                # 이미 초기화된 앱이 있는 경우
-                db = firestore.client()
-                logging.info("Firebase 이미 초기화됨, 클라이언트 재사용")
-                
-            # DB 연결 테스트
-            try:
-                test_ref = db.collection('test').document('connection')
-                test_ref.set({'timestamp': datetime.now()})
-                logging.info("Firebase 연결 테스트 성공")
-            except Exception as test_error:
-                logging.error(f"Firebase 연결 테스트 실패: {test_error}")
-                
-            # models.py 초기화 - db 인스턴스 전달
-            import models
-            if models.setup_firebase(db):
-                logging.info("models.py Firebase 설정 완료")
-            else:
-                logging.error("models.py Firebase 설정 실패")
-            
-        except Exception as init_error:
-            logging.error(f"Firebase 초기화 오류: {init_error}")
-    else:
-        missing = []
-        if not os.path.exists(cred_path):
-            missing.append(f"서비스 계정 키 파일({cred_path})")
-        if not firebase_project_id:
-            missing.append("FIREBASE_PROJECT_ID 환경 변수")
+    if firebase_cred_json:
+        cred_dict = json.loads(firebase_cred_json)
+        cred = credentials.Certificate(cred_dict)
+
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(cred)
+            db = firestore.client()
+            logging.info("Firebase 초기화 성공")
+        else:
+            # 이미 초기화된 앱이 있는 경우
+            db = firestore.client()
+            logging.info("Firebase 이미 초기화됨, 클라이언트 재사용")
         
-        logging.warning(f"Firebase 초기화 실패: {', '.join(missing)}이(가) 없습니다.")
+        logging.info("✅ Firebase JSON 환경변수로 초기화 성공")
+        
+        # DB 연결 테스트
+        try:
+            test_ref = db.collection('test').document('connection')
+            test_ref.set({'timestamp': datetime.now()})
+            logging.info("Firebase 연결 테스트 성공")
+        except Exception as test_error:
+            logging.error(f"Firebase 연결 테스트 실패: {test_error}")
+    else:
+        logging.warning("⚠️ 환경 변수 GOOGLE_APPLICATION_CREDENTIALS_JSON이 없습니다.")
 except Exception as e:
-    logging.error(f"Firebase 초기화 중 예상치 못한 오류 발생: {e}")
+    logging.error(f"❌ Firebase 초기화 오류: {e}")
+
+# models.py 초기화 - db 인스턴스 전달
+try:
+    import models
+    if models.setup_firebase(db):
+        logging.info("models.py Firebase 설정 완료")
+    else:
+        logging.error("models.py Firebase 설정 실패")
+except Exception as setup_error:
+    logging.error(f"models.py 설정 오류: {setup_error}")
 
 # ================== [Flask 객체 생성] ==================
 app = Flask(__name__)
