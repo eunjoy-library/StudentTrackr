@@ -449,43 +449,68 @@ def load_attendance():
             attendances = [models.firestore_to_dict(doc) for doc in attendances_ref]
         
         for attendance in attendances:
-            # 문자열로 저장된 생성 시간이 있는 경우 먼저 사용 (가장 정확한 방법)
+            # 날짜 관련 정보를 모두 가져옴
+            # 1. 직접 저장된 시간 문자열
             created_at_str = attendance.get('created_at')
             timestamp_str = attendance.get('timestamp_str')
             
-            # 문자열 시간이 있는 경우 먼저 사용
-            if created_at_str and isinstance(created_at_str, str):
-                date_str = created_at_str.split()[0]  # YYYY-MM-DD 부분만 추출
-                date_time_str = created_at_str  # 전체 시간 문자열 사용
-                logging.info(f"문자열 시간 사용 (created_at): {date_time_str}")
-            elif timestamp_str and isinstance(timestamp_str, str):
+            # 2. 직접 저장된 시간 구성 요소
+            time_only = attendance.get('time_only')
+            hour = attendance.get('hour')
+            minute = attendance.get('minute')
+            second = attendance.get('second')
+            
+            # 3. datetime 객체
+            date_obj = attendance.get('date')
+            
+            # 여러 방법으로 시간 정보 구성 시도 (우선순위 순서대로)
+            
+            # 케이스 1: 직접 저장된 시간 문자열 사용 (가장 선호)
+            if timestamp_str and isinstance(timestamp_str, str):
                 date_str = timestamp_str.split()[0]  # YYYY-MM-DD 부분만 추출
                 date_time_str = timestamp_str  # 전체 시간 문자열 사용
                 logging.info(f"문자열 시간 사용 (timestamp_str): {date_time_str}")
+            
+            # 케이스 2: created_at 문자열 사용
+            elif created_at_str and isinstance(created_at_str, str):
+                date_str = created_at_str.split()[0]  # YYYY-MM-DD 부분만 추출
+                date_time_str = created_at_str  # 전체 시간 문자열 사용
+                logging.info(f"문자열 시간 사용 (created_at): {date_time_str}")
+            
+            # 케이스 3: 개별 시간 구성 요소로 시간 재구성
+            elif date_obj and hour is not None and minute is not None:
+                # datetime 객체 우선 확인
+                if isinstance(date_obj, datetime):
+                    # 기존 date와 저장된 시간 구성요소 조합
+                    date_str = date_obj.strftime('%Y-%m-%d')
+                    
+                    # 초가 있으면 포함, 없으면 00 사용
+                    sec = second if second is not None else 0
+                    date_time_str = f"{date_str} {hour:02d}:{minute:02d}:{sec:02d}"
+                    logging.info(f"구성요소로 시간 재구성: {date_time_str}")
+                else:
+                    # date가 datetime이 아닌 경우: 하드코딩된 시간 사용
+                    date_str = datetime.now().strftime('%Y-%m-%d')
+                    date_time_str = f"{date_str} {hour:02d}:{minute:02d}:{second or 0:02d}"
+                    logging.info(f"현재 날짜와 저장된 시간 사용: {date_time_str}")
+                    
+            # 케이스 4: 기존 datetime 객체 사용 (백업)
             else:
-                # 문자열 시간이 없는 경우 기존 방식으로 시도
-                date_obj = attendance.get('date')
-                date_backup_obj = attendance.get('local_time')  # models.py에서 변경된 필드명
-                
-                # 헬퍼 함수를 사용하여 datetime 객체로 변환
                 parsed_date = parse_datetime(date_obj)
                 
-                # 기본 날짜 변환 실패 시 백업 날짜 시도
-                if not parsed_date and date_backup_obj:
-                    parsed_date = parse_datetime(date_backup_obj)
-                    if parsed_date:
-                        logging.info("백업 날짜 사용")
-                
-                # 변환 성공 시 포맷팅
                 if parsed_date:
                     date_str = parsed_date.strftime('%Y-%m-%d')
-                    date_time_str = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
-                    logging.info(f"날짜 변환 성공: {date_time_str}")
+                    
+                    # 시간은 현재 시간 사용 (마지막 방안)
+                    now = datetime.now()
+                    date_time_str = f"{date_str} {now.hour:02d}:{now.minute:02d}:{now.second:02d}"
+                    logging.info(f"날짜와 현재 시간 조합: {date_time_str}")
                 else:
-                    # 모든 변환 실패 시 기본값 표시
-                    date_str = "날짜 없음"
-                    date_time_str = "날짜 없음"
-                    logging.error(f"날짜 변환 실패: {date_obj}, 백업: {date_backup_obj}")
+                    # 최종 방안: 현재 시간 사용
+                    now = datetime.now()
+                    date_str = now.strftime('%Y-%m-%d')
+                    date_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
+                    logging.warning(f"기본값으로 현재 시간 사용: {date_time_str}")
             
             attendances_list.append({
                 '출석일': date_str,
@@ -508,8 +533,16 @@ def save_attendance(student_id, name, seat):
         # 한국 시간 기준으로 현재 날짜와 시간 저장
         now = datetime.now(KST)
         
-        # 현재 시간 직접 기록
+        # 현재 시간 직접 기록 (형식화된 문자열)
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 시간 저장을 위한 간소화된 접근법 - 직접 문자열로 사용
+        hour = now.hour
+        minute = now.minute
+        second = now.second
+        formatted_time = f"{hour:02d}:{minute:02d}:{second:02d}"
+        
+        # 로그 기록
         logging.info(f"저장할 출석 시간: {current_time_str}")
         
         period = get_current_period()
@@ -517,7 +550,12 @@ def save_attendance(student_id, name, seat):
         
         # 추가 필드를 포함하여 Firebase에 출석 기록 저장
         custom_fields = {
-            "timestamp_str": current_time_str,  # 문자열 형식의 타임스탬프도 함께 저장
+            # 다양한 형식의 시간 저장
+            "timestamp_str": current_time_str,
+            "time_only": formatted_time,  # 시:분:초만 저장
+            "hour": hour,                # 시간만 숫자로 저장 
+            "minute": minute,            # 분만 숫자로 저장
+            "second": second             # 초만 숫자로 저장
         }
         
         # Firebase에 출석 기록 저장
