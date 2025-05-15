@@ -126,13 +126,11 @@ PERIOD_SCHEDULE = {
 # 교시별 메모 저장 함수
 def save_period_memo(date, period, memo_text):
     """
-    교시별 메모를 저장하는 함수 (데이터베이스 사용)
+    교시별 메모를 저장하는 함수 (Firebase 사용)
     """
-    from models import PeriodMemo
-    
     try:
-        # 데이터베이스에 메모 저장 (PeriodMemo 모델 사용)
-        result = PeriodMemo.save_memo(date, period, memo_text)
+        # Firebase에 메모 저장
+        result = models.save_memo(date, period, memo_text)
         return result
     except Exception as e:
         logging.error(f"메모 저장 중 오류 발생: {e}")
@@ -141,13 +139,11 @@ def save_period_memo(date, period, memo_text):
 # 모든 교시별 메모 로드 함수
 def load_period_memos():
     """
-    모든 교시별 메모를 로드하는 함수 (데이터베이스 사용)
+    모든 교시별 메모를 로드하는 함수 (Firebase 사용)
     """
-    from models import PeriodMemo
-    
     try:
-        # 데이터베이스에서 모든 메모 조회
-        return PeriodMemo.get_all_memos()
+        # Firebase에서 모든 메모 조회
+        return models.get_all_memos()
     except Exception as e:
         logging.error(f"메모 로드 중 오류 발생: {e}")
         return []
@@ -155,13 +151,11 @@ def load_period_memos():
 # 특정 교시의 메모 조회 함수
 def get_period_memo(date, period):
     """
-    특정 날짜와 교시에 해당하는 메모를 반환하는 함수 (데이터베이스 사용)
+    특정 날짜와 교시에 해당하는 메모를 반환하는 함수 (Firebase 사용)
     """
-    from models import PeriodMemo
-    
     try:
-        # 데이터베이스에서 특정 날짜/교시의 메모 조회
-        return PeriodMemo.get_memo(date, period)
+        # Firebase에서 특정 날짜/교시의 메모 조회
+        return models.get_memo(date, period)
     except Exception as e:
         logging.error(f"메모 조회 중 오류 발생: {e}")
         return ""
@@ -802,18 +796,30 @@ def delete_records():
                     start_of_day = datetime(date_obj.year, date_obj.month, date_obj.day, 0, 0, 0)
                     next_day = start_of_day + timedelta(days=1)
                     
-                    # 해당 날짜의 해당 학생 기록 모두 조회
-                    attendances = Attendance.query.filter(
-                        Attendance.student_id == student_id,
-                        Attendance.date >= start_of_day,
-                        Attendance.date < next_day
-                    ).all()
-                    
-                    # 각 기록 삭제
-                    for attendance in attendances:
-                        Attendance.delete_attendance(attendance.id)
-                        deleted_count += 1
-                        logging.info(f"데이터베이스에서 기록 삭제됨: 학번={student_id}, 날짜={date_str}")
+                    # Firebase에서 해당 날짜의 해당 학생 기록 조회
+                    # 이를 위해 models에 새 함수를 사용하거나 직접 구현
+                    try:
+                        # Firebase에서 모든 출석 문서 가져오기
+                        if models.db:
+                            attendances_ref = models.db.collection('attendances')
+                            
+                            # 필터링: 해당 학생 ID + 해당 날짜 범위 (FieldFilter 사용)
+                            query = attendances_ref.where(
+                                filter=models.firestore.FieldFilter("student_id", "==", student_id)
+                            ).where(
+                                filter=models.firestore.FieldFilter("date", ">=", start_of_day)
+                            ).where(
+                                filter=models.firestore.FieldFilter("date", "<", next_day)
+                            ).get()
+                            
+                            # 각 결과 문서에 대해 삭제 처리
+                            for doc in query:
+                                # 문서 ID로 삭제
+                                models.delete_attendance(doc.id)
+                                deleted_count += 1
+                                logging.info(f"Firebase에서 기록 삭제됨: 학번={student_id}, 문서ID={doc.id}, 날짜={date_str}")
+                    except Exception as fb_error:
+                        logging.error(f"Firebase 조회/삭제 중 오류: {fb_error}")
                 except Exception as db_error:
                     logging.error(f"특정 기록 삭제 중 오류: {db_error}")
         
@@ -908,8 +914,23 @@ def admin_add_attendance_confirm():
     # 경고 받은 학생 정보 표시 (관리자는 등록 허용)
     if is_warned:
         if warning_info:
-            expiry_date = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
-            reason = warning_info.reason or "도서실 이용 규정 위반"
+            # Firebase에서 가져온 데이터는 딕셔너리 형태
+            expiry_date_obj = warning_info.get('expiry_date')
+            
+            # datetime 객체로 변환하여 포맷팅
+            if isinstance(expiry_date_obj, datetime):
+                expiry_date = expiry_date_obj.strftime('%Y년 %m월 %d일')
+            else:
+                # 문자열이나 타임스탬프인 경우
+                try:
+                    if isinstance(expiry_date_obj, str):
+                        expiry_date_obj = datetime.fromisoformat(expiry_date_obj)
+                    expiry_date = expiry_date_obj.strftime('%Y년 %m월 %d일')
+                except Exception as e:
+                    logging.error(f"경고일자 변환 오류: {e}")
+                    expiry_date = str(expiry_date_obj)
+                    
+            reason = warning_info.get('reason') or "도서실 이용 규정 위반"
             flash(f"⚠️ 이 학생은 도서실 이용이 제한된 상태입니다. (사유: {reason}, 해제일: {expiry_date}) 관리자 권한으로 출석이 가능합니다.", "warning")
         else:
             flash("⚠️ 이 학생은 도서실 이용이 제한된 상태입니다. 관리자 권한으로 출석이 가능합니다.", "warning")
@@ -1088,7 +1109,7 @@ def lookup_name():
         # 필요한 정보만 쿼리 (불필요한 처리 제거)
         
         # 1. 경고 정보 확인 (가장 빠른 쿼리)
-        is_warned, warning_info = Warning.is_student_warned(student_id)
+        is_warned, warning_info = models.is_student_warned(student_id)
         
         # 2. 경고가 없는 경우에만 출석 정보 확인
         if not is_warned:
@@ -1102,17 +1123,41 @@ def lookup_name():
             this_week_monday = this_week_monday.replace(hour=0, minute=0, second=0, microsecond=0)
             
             # 이번 주 출석 여부 확인 (단일 쿼리)
-            week_attendance = Attendance.get_recent_attendance_for_week(student_id, this_week_monday)
+            week_attendance = models.get_recent_attendance_for_week(student_id, this_week_monday)
             already_attended = week_attendance is not None
             
             # 출석 기록이 있는 경우
             if already_attended and week_attendance:
-                last_attendance_date_str = week_attendance.date.strftime('%Y년 %m월 %d일')
+                # Firebase는 딕셔너리로 데이터 반환
+                date_obj = week_attendance.get('date')
+                if isinstance(date_obj, datetime):
+                    last_attendance_date_str = date_obj.strftime('%Y년 %m월 %d일')
+                else:
+                    # 문자열이나 타임스탬프인 경우 변환
+                    try:
+                        if isinstance(date_obj, str):
+                            date_obj = datetime.fromisoformat(date_obj)
+                        last_attendance_date_str = date_obj.strftime('%Y년 %m월 %d일')
+                    except Exception as e:
+                        logging.error(f"날짜 변환 오류: {e}")
+                        last_attendance_date_str = str(date_obj)
             else:
                 # 최근 출석 정보 확인 (없을 수도 있음)
-                last_attendance = Attendance.get_recent_attendance(student_id, days=365)
+                last_attendance = models.get_recent_attendance(student_id, days=365)
                 if last_attendance:
-                    last_attendance_date_str = last_attendance.date.strftime('%Y년 %m월 %d일')
+                    # Firebase는 딕셔너리로 데이터 반환
+                    date_obj = last_attendance.get('date')
+                    if isinstance(date_obj, datetime):
+                        last_attendance_date_str = date_obj.strftime('%Y년 %m월 %d일')
+                    else:
+                        # 문자열이나 타임스탬프인 경우 변환
+                        try:
+                            if isinstance(date_obj, str):
+                                date_obj = datetime.fromisoformat(date_obj)
+                            last_attendance_date_str = date_obj.strftime('%Y년 %m월 %d일')
+                        except Exception as e:
+                            logging.error(f"날짜 변환 오류: {e}")
+                            last_attendance_date_str = str(date_obj)
             
             # 3. 수용 인원 확인 (다른 조건 확인 후에만)
             if current_period > 0 and not already_attended:
@@ -1125,8 +1170,23 @@ def lookup_name():
         warning_message = None
         warning_expiry = None
         if is_warned and warning_info:
-            warning_expiry = warning_info.expiry_date.strftime('%Y년 %m월 %d일')
-            warning_message = warning_info.reason or "도서실 이용 규정 위반"
+            # Firebase는 딕셔너리로 데이터 반환
+            expiry_date_obj = warning_info.get('expiry_date')
+            
+            # datetime 객체로 변환하여 포맷팅
+            if isinstance(expiry_date_obj, datetime):
+                warning_expiry = expiry_date_obj.strftime('%Y년 %m월 %d일')
+            else:
+                # 문자열이나 타임스탬프인 경우
+                try:
+                    if isinstance(expiry_date_obj, str):
+                        expiry_date_obj = datetime.fromisoformat(expiry_date_obj)
+                    warning_expiry = expiry_date_obj.strftime('%Y년 %m월 %d일')
+                except Exception as e:
+                    logging.error(f"경고일자 변환 오류: {e}")
+                    warning_expiry = str(expiry_date_obj)
+                    
+            warning_message = warning_info.get('reason') or "도서실 이용 규정 위반"
         
         # 최종 결과 반환
         return jsonify({
@@ -1163,20 +1223,53 @@ def delete_before_date():
             # 자정(00:00:00)으로 시간 설정
             cutoff_date = datetime(cutoff_date.year, cutoff_date.month, cutoff_date.day, 0, 0, 0)
             
-            # 데이터베이스에서 기준 날짜 이전의 출석 레코드 조회
-            records_to_delete = Attendance.query.filter(Attendance.date < cutoff_date).all()
+            # Firebase에서 기준 날짜 이전의 출석 레코드 조회
+            delete_count = 0
             
-            # 삭제할 레코드 개수 확인
-            delete_count = len(records_to_delete)
-            
-            if delete_count > 0:
-                # 삭제할 각 레코드 처리
-                for attendance in records_to_delete:
-                    # 로깅
-                    logging.info(f"Deleting record: 학번={attendance.student_id}, 날짜={attendance.date}")
+            try:
+                # Firebase에서 모든 출석 레코드 가져오기
+                if models.db:
+                    attendances_ref = models.db.collection('attendances')
                     
-                    # 레코드 삭제
-                    Attendance.delete_attendance(attendance.id)
+                    # 날짜로 필터링 (Firebase는 완전히 동일한 방식으로 필터링이 어려움)
+                    # 모든 레코드를 가져와 Python에서 필터링
+                    all_records = attendances_ref.get()
+                    
+                    # 문서 ID 리스트와 로그용 정보 생성
+                    to_delete_ids = []
+                    
+                    for doc in all_records:
+                        record = doc.to_dict()
+                        date_val = record.get('date')
+                        
+                        # 날짜 객체 검증 및 변환
+                        if date_val and isinstance(date_val, datetime):
+                            if date_val < cutoff_date:
+                                to_delete_ids.append(doc.id)
+                                logging.info(f"Marking for deletion: 학번={record.get('student_id')}, 날짜={date_val}, 문서ID={doc.id}")
+                    
+                    # 삭제할 레코드 개수 확인
+                    delete_count = len(to_delete_ids)
+                    
+                    # 배치로 삭제 처리 (많은 양의 데이터 효율적 처리)
+                    if delete_count > 0:
+                        # 배치 크기 제한 (500개씩)
+                        batch_size = 500
+                        for i in range(0, delete_count, batch_size):
+                            batch = models.db.batch()
+                            batch_ids = to_delete_ids[i:i+batch_size]
+                            
+                            for doc_id in batch_ids:
+                                doc_ref = attendances_ref.document(doc_id)
+                                batch.delete(doc_ref)
+                                
+                            # 배치 커밋
+                            batch.commit()
+                            logging.info(f"Batch delete completed: {len(batch_ids)} records")
+            except Exception as e:
+                logging.error(f"Firebase 대량 삭제 오류: {e}")
+                flash(f"삭제 중 오류가 발생했습니다: {str(e)}", "danger")
+                return redirect('/by_period')
                 
                 logging.info(f"Deleted {delete_count} records before {date_str}")
                 flash(f"✅ {date_str} 이전의 {delete_count}개 출석 기록이 삭제되었습니다.", "success")
