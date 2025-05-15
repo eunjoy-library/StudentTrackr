@@ -23,16 +23,20 @@ db = None
 # 전역 변수: Firebase 버전에 따른 FieldFilter
 field_filter_support = False
 
+# 전역 변수: Firebase FieldFilter 클래스
+FieldFilter = None  # 초기값은 None으로 설정
+
 # Firebase FieldFilter 지원 확인 및 설정 함수
 def setup_firebase(firestore_db):
     """Firebase 클라이언트와 버전별 기능 지원 설정"""
-    global db, field_filter_support
+    global db, field_filter_support, FieldFilter
     
     db = firestore_db
     
     # FieldFilter 지원 확인
     try:
-        from firebase_admin.firestore import FieldFilter
+        from firebase_admin.firestore import FieldFilter as FirebaseFieldFilter
+        FieldFilter = FirebaseFieldFilter  # 전역 변수에 할당
         field_filter_support = True
         logging.info("Firebase FieldFilter 지원 확인됨")
     except ImportError:
