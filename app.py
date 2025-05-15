@@ -416,8 +416,15 @@ def load_attendance():
         
         for attendance in attendances:
             # Firebase 문서를 딕셔너리로 변환
+            # 서버 타임스탬프와 백업 시간 중에서 선택
             date_obj = attendance.get('date')
+            date_backup_obj = attendance.get('local_time')  # models.py에서 변경된 필드명
             
+            # 둘 중 하나를 사용 (date가 None이거나 문제 있으면 date_backup 사용)
+            if not date_obj and date_backup_obj:
+                date_obj = date_backup_obj
+                logging.info("백업 날짜 사용")
+                
             # 날짜 객체 처리 - 타임존 문제 해결 및 시간 표시 개선
             if isinstance(date_obj, datetime):
                 # 타임존이 있는 경우 제거 (일관성 유지)
@@ -427,11 +434,20 @@ def load_attendance():
                 # 날짜와 시간 포맷팅
                 date_str = date_obj.strftime('%Y-%m-%d')
                 date_time_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                
+                logging.info(f"DateTime 사용: {date_time_str}")
             else:
                 # 문자열이나 타임스탬프인 경우 변환 시도
                 try:
                     if isinstance(date_obj, str):
                         date_obj = datetime.fromisoformat(date_obj)
+                    
+                    # Firestore 타임스탬프 객체일 수 있음
+                    if hasattr(date_obj, 'timestamp'):
+                        # Firestore 타임스탬프를 Python datetime으로 변환
+                        from datetime import datetime
+                        date_obj = datetime.fromtimestamp(date_obj.timestamp())
+                        logging.info(f"Firestore 타임스탬프 변환: {date_obj}")
                     
                     # 타임존이 있는 경우 제거
                     if hasattr(date_obj, 'tzinfo') and date_obj.tzinfo:
@@ -440,9 +456,19 @@ def load_attendance():
                     date_str = date_obj.strftime('%Y-%m-%d')
                     date_time_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
-                    logging.error(f"날짜 변환 오류: {e}")
-                    date_str = str(date_obj)
-                    date_time_str = str(date_obj)
+                    logging.error(f"날짜 변환 오류: {e}, 타입: {type(date_obj)}")
+                    
+                    # 백업 날짜 사용 시도
+                    if date_backup_obj and isinstance(date_backup_obj, datetime):
+                        date_obj = date_backup_obj
+                        if date_obj.tzinfo:
+                            date_obj = date_obj.replace(tzinfo=None)
+                        date_str = date_obj.strftime('%Y-%m-%d')
+                        date_time_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                        logging.info(f"변환 실패 시 백업 날짜 사용: {date_time_str}")
+                    else:
+                        date_str = str(date_obj)
+                        date_time_str = str(date_obj)
             
             attendances_list.append({
                 '출석일': date_str,

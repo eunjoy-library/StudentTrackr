@@ -128,17 +128,32 @@ def add_attendance(student_id, name, seat, period_text):
                     return None  # 이미 출석한 경우 저장하지 않음
         
         # 새 출석 기록 추가
+        # datetime 객체 생성
         now = datetime.now()
         # 타임존 제거
         if hasattr(now, 'tzinfo') and now.tzinfo:
             now = now.replace(tzinfo=None)
+        
+        # 한국시간으로 보정 (시간 정확도 향상)
+        try:
+            import pytz
+            # 한국 시간대 적용
+            korea_timezone = pytz.timezone('Asia/Seoul')
+            now_korea = pytz.utc.localize(now).astimezone(korea_timezone)
+            # 타임존 정보 제거 (일관성 유지)
+            now_korea = now_korea.replace(tzinfo=None)
+            logging.info(f"한국 시간 변환: {now_korea}")
+        except ImportError:
+            now_korea = now
+            logging.warning("pytz 모듈을 찾을 수 없어 한국 시간 적용 불가")
             
         new_record = {
             "student_id": student_id,
             "name": name,
             "seat": seat,
             "period": period_text,
-            "date": now
+            "date": now_korea,  # 한국 시간 사용
+            "local_time": now  # 시스템 로컬 시간 (백업용)
         }
         
         doc_ref = attendances_ref.add(new_record)
