@@ -43,11 +43,16 @@ if not os.path.exists(cred_path):
         json.dump(firebase_config, f)
 
 # Firebase 초기화
+db = None
 try:
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    logging.info("Firebase 초기화 성공")
+    # 실제 키 있는 경우에만 Firebase 초기화
+    if 'FIREBASE_PROJECT_ID' in os.environ and os.environ.get('FIREBASE_PROJECT_ID'):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        logging.info("Firebase 초기화 성공")
+    else:
+        logging.warning("Firebase 프로젝트 ID가 설정되지 않아 Firebase 초기화를 건너뜁니다.")
 except Exception as e:
     logging.error(f"Firebase 초기화 중 오류 발생: {e}")
 
@@ -56,6 +61,26 @@ app = Flask(__name__)
 
 # ================== [앱 설정] ==================
 app.secret_key = os.environ.get("SESSION_SECRET", "fallback")
+
+# ✅ 테스트 라우트: Firebase 저장 테스트
+@app.route('/test')
+def test():
+    if db is None:
+        return "⚠️ Firebase가 초기화되지 않았습니다. Firebase 키를 설정해주세요."
+    
+    try:
+        # Firebase에 테스트 데이터 저장
+        db.collection("attendances").add({
+            "student_id": "20240101",
+            "name": "홍길동",
+            "seat": "A1",
+            "period": "1교시",
+            "date": datetime.now()
+        })
+        return "✅ Firebase 저장 완료!"
+    except Exception as e:
+        logging.error(f"Firebase 저장 테스트 오류: {e}")
+        return f"❌ Firebase 저장 실패: {str(e)}"
 
 # ================== [한국 시간대 설정 및 로그 설정] ==================
 
