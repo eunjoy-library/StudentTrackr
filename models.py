@@ -100,6 +100,12 @@ def add_attendance(student_id, name, seat, period_text):
         today_start = datetime.combine(today, datetime.min.time())
         today_end = datetime.combine(today, datetime.max.time())
         
+        # 타임존 처리
+        if hasattr(today_start, 'tzinfo') and today_start.tzinfo:
+            today_start = today_start.replace(tzinfo=None)
+        if hasattr(today_end, 'tzinfo') and today_end.tzinfo:
+            today_end = today_end.replace(tzinfo=None)
+        
         # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         existing_docs = attendances_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
@@ -111,18 +117,28 @@ def add_attendance(student_id, name, seat, period_text):
             doc_period = data.get("period")
             doc_date = data.get("date")
             
-            # 오늘 같은 교시에 이미 출석했는지 확인
-            if (doc_period == period_text and 
-                doc_date and doc_date >= today_start and doc_date <= today_end):
-                return None  # 이미 출석한 경우 저장하지 않음
+            # 타임존 처리
+            if doc_date:
+                if hasattr(doc_date, 'tzinfo') and doc_date.tzinfo:
+                    doc_date = doc_date.replace(tzinfo=None)
+            
+                # 오늘 같은 교시에 이미 출석했는지 확인
+                if (doc_period == period_text and 
+                    doc_date.date() == today):
+                    return None  # 이미 출석한 경우 저장하지 않음
         
         # 새 출석 기록 추가
+        now = datetime.now()
+        # 타임존 제거
+        if hasattr(now, 'tzinfo') and now.tzinfo:
+            now = now.replace(tzinfo=None)
+            
         new_record = {
             "student_id": student_id,
             "name": name,
             "seat": seat,
             "period": period_text,
-            "date": datetime.now()
+            "date": now
         }
         
         doc_ref = attendances_ref.add(new_record)
@@ -154,6 +170,10 @@ def get_recent_attendance(student_id, days=7):
         attendances_ref = db.collection('attendances')
         recent_date = datetime.now() - timedelta(days=days)
         
+        # 타임존 처리
+        if hasattr(recent_date, 'tzinfo') and recent_date.tzinfo:
+            recent_date = recent_date.replace(tzinfo=None)
+        
         # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         docs = attendances_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
@@ -167,12 +187,17 @@ def get_recent_attendance(student_id, days=7):
             data = doc.to_dict()
             doc_date = data.get("date")
             
-            # 최근 일수 이내 기록만 확인
-            if doc_date and doc_date >= recent_date:
-                # 가장 최근 기록 찾기
-                if most_recent_date is None or doc_date > most_recent_date:
-                    most_recent = doc
-                    most_recent_date = doc_date
+            # 타임존 처리
+            if doc_date:
+                if hasattr(doc_date, 'tzinfo') and doc_date.tzinfo:
+                    doc_date = doc_date.replace(tzinfo=None)
+                
+                # 최근 일수 이내 기록만 확인
+                if doc_date >= recent_date:
+                    # 가장 최근 기록 찾기
+                    if most_recent_date is None or doc_date > most_recent_date:
+                        most_recent = doc
+                        most_recent_date = doc_date
         
         if most_recent:
             return firestore_to_dict(most_recent)
@@ -187,6 +212,13 @@ def get_recent_attendance_for_week(student_id, week_start_date):
     """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
     try:
         week_end_date = week_start_date + timedelta(days=5)  # 월요일부터 금요일까지
+        
+        # 타임존 처리
+        if hasattr(week_start_date, 'tzinfo') and week_start_date.tzinfo:
+            week_start_date = week_start_date.replace(tzinfo=None)
+        if hasattr(week_end_date, 'tzinfo') and week_end_date.tzinfo:
+            week_end_date = week_end_date.replace(tzinfo=None)
+            
         attendances_ref = db.collection('attendances')
         
         # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
@@ -199,9 +231,14 @@ def get_recent_attendance_for_week(student_id, week_start_date):
             data = doc.to_dict()
             doc_date = data.get("date")
             
-            # 특정 주의 기록만 확인
-            if doc_date and doc_date >= week_start_date and doc_date < week_end_date:
-                return firestore_to_dict(doc)
+            # 타임존 처리
+            if doc_date:
+                if hasattr(doc_date, 'tzinfo') and doc_date.tzinfo:
+                    doc_date = doc_date.replace(tzinfo=None)
+                
+                # 특정 주의 기록만 확인
+                if doc_date >= week_start_date and doc_date < week_end_date:
+                    return firestore_to_dict(doc)
                 
         return None
     except Exception as e:
@@ -236,9 +273,8 @@ def get_attendances_by_period(period, limit=50):
 def get_today_attendances():
     """오늘의 출석 기록 조회"""
     try:
+        # 타임존 관련 문제 해결
         today = datetime.now().date()
-        today_start = datetime.combine(today, datetime.min.time())
-        today_end = datetime.combine(today, datetime.max.time())
         
         # Firebase의 복합 인덱스 문제 해결을 위한 코드
         attendances_ref = db.collection('attendances')
@@ -252,8 +288,15 @@ def get_today_attendances():
             data = doc.to_dict()
             doc_date = data.get("date")
             
-            if doc_date and doc_date >= today_start and doc_date <= today_end:
-                today_records.append(firestore_to_dict(doc))
+            # 날짜만 비교 (타임존 문제 해결)
+            if doc_date:
+                # 타임존 정보가 있는 경우 제거
+                if hasattr(doc_date, 'tzinfo') and doc_date.tzinfo:
+                    doc_date = doc_date.replace(tzinfo=None)
+                
+                # 날짜만 비교 (시간 제외)
+                if doc_date.date() == today:
+                    today_records.append(firestore_to_dict(doc))
         
         # 날짜 기준 내림차순 정렬
         today_records.sort(key=lambda x: x.get('date', datetime.min), reverse=True)
