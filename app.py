@@ -449,30 +449,43 @@ def load_attendance():
             attendances = [models.firestore_to_dict(doc) for doc in attendances_ref]
         
         for attendance in attendances:
-            # Firebase 문서를 딕셔너리로 변환
-            # 날짜 필드 가져오기 
-            date_obj = attendance.get('date')
-            date_backup_obj = attendance.get('local_time')  # models.py에서 변경된 필드명
+            # 문자열로 저장된 생성 시간이 있는 경우 먼저 사용 (가장 정확한 방법)
+            created_at_str = attendance.get('created_at')
+            timestamp_str = attendance.get('timestamp_str')
             
-            # 헬퍼 함수를 사용하여 datetime 객체로 변환
-            parsed_date = parse_datetime(date_obj)
-            
-            # 기본 날짜 변환 실패 시 백업 날짜 시도
-            if not parsed_date and date_backup_obj:
-                parsed_date = parse_datetime(date_backup_obj)
-                if parsed_date:
-                    logging.info("백업 날짜 사용")
-            
-            # 변환 성공 시 포맷팅
-            if parsed_date:
-                date_str = parsed_date.strftime('%Y-%m-%d')
-                date_time_str = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
-                logging.info(f"날짜 변환 성공: {date_time_str}")
+            # 문자열 시간이 있는 경우 먼저 사용
+            if created_at_str and isinstance(created_at_str, str):
+                date_str = created_at_str.split()[0]  # YYYY-MM-DD 부분만 추출
+                date_time_str = created_at_str  # 전체 시간 문자열 사용
+                logging.info(f"문자열 시간 사용 (created_at): {date_time_str}")
+            elif timestamp_str and isinstance(timestamp_str, str):
+                date_str = timestamp_str.split()[0]  # YYYY-MM-DD 부분만 추출
+                date_time_str = timestamp_str  # 전체 시간 문자열 사용
+                logging.info(f"문자열 시간 사용 (timestamp_str): {date_time_str}")
             else:
-                # 모든 변환 실패 시 기본값 표시
-                date_str = "날짜 없음"
-                date_time_str = "날짜 없음"
-                logging.error(f"날짜 변환 실패: {date_obj}, 백업: {date_backup_obj}")
+                # 문자열 시간이 없는 경우 기존 방식으로 시도
+                date_obj = attendance.get('date')
+                date_backup_obj = attendance.get('local_time')  # models.py에서 변경된 필드명
+                
+                # 헬퍼 함수를 사용하여 datetime 객체로 변환
+                parsed_date = parse_datetime(date_obj)
+                
+                # 기본 날짜 변환 실패 시 백업 날짜 시도
+                if not parsed_date and date_backup_obj:
+                    parsed_date = parse_datetime(date_backup_obj)
+                    if parsed_date:
+                        logging.info("백업 날짜 사용")
+                
+                # 변환 성공 시 포맷팅
+                if parsed_date:
+                    date_str = parsed_date.strftime('%Y-%m-%d')
+                    date_time_str = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
+                    logging.info(f"날짜 변환 성공: {date_time_str}")
+                else:
+                    # 모든 변환 실패 시 기본값 표시
+                    date_str = "날짜 없음"
+                    date_time_str = "날짜 없음"
+                    logging.error(f"날짜 변환 실패: {date_obj}, 백업: {date_backup_obj}")
             
             attendances_list.append({
                 '출석일': date_str,
@@ -494,13 +507,24 @@ def save_attendance(student_id, name, seat):
     try:
         # 한국 시간 기준으로 현재 날짜와 시간 저장
         now = datetime.now(KST)
+        
+        # 현재 시간 직접 기록
+        current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"저장할 출석 시간: {current_time_str}")
+        
         period = get_current_period()
         period_text = f'{period}교시' if period > 0 else '시간 외'
         
+        # 추가 필드를 포함하여 Firebase에 출석 기록 저장
+        custom_fields = {
+            "timestamp_str": current_time_str,  # 문자열 형식의 타임스탬프도 함께 저장
+        }
+        
         # Firebase에 출석 기록 저장
-        doc_id = models.add_attendance(student_id, name, seat, period_text)
+        doc_id = models.add_attendance(student_id, name, seat, period_text, custom_fields)
         
         if doc_id:
+            logging.info(f"출석 기록 성공: {current_time_str}")
             return True
         else:
             # 이미 있는 경우 (중복 출석 등) - 경고 메시지 없이 성공으로 처리

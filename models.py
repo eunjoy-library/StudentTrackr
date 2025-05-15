@@ -90,8 +90,17 @@ def firestore_to_dict(doc):
 # ================== [출석 관련 함수] ==================
 
 @timing_decorator
-def add_attendance(student_id, name, seat, period_text):
-    """출석 기록 추가"""
+def add_attendance(student_id, name, seat, period_text, custom_fields=None):
+    """
+    출석 기록 추가
+    
+    Args:
+        student_id: 학생 ID
+        name: 학생 이름
+        seat: 좌석 번호 
+        period_text: 교시 텍스트
+        custom_fields: 추가 필드 (선택적)
+    """
     try:
         attendances_ref = db.collection('attendances')
         
@@ -146,15 +155,21 @@ def add_attendance(student_id, name, seat, period_text):
         except ImportError:
             now_korea = now
             logging.warning("pytz 모듈을 찾을 수 없어 한국 시간 적용 불가")
-            
+        
+        # 기본 레코드 생성    
         new_record = {
             "student_id": student_id,
             "name": name,
             "seat": seat,
             "period": period_text,
             "date": now_korea,  # 한국 시간 사용
-            "local_time": now  # 시스템 로컬 시간 (백업용)
+            "local_time": now,  # 시스템 로컬 시간 (백업용)
+            "created_at": now_korea.strftime('%Y-%m-%d %H:%M:%S')  # 문자열 시간도 항상 저장
         }
+        
+        # 추가 필드가 있는 경우 병합
+        if custom_fields and isinstance(custom_fields, dict):
+            new_record.update(custom_fields)
         
         doc_ref = attendances_ref.add(new_record)
         logging.info(f"출석 기록 추가 성공: {student_id} ({name}), 교시: {period_text}")
