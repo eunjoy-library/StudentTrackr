@@ -6,7 +6,7 @@ packages = ["glibcLocales", "openssl", "postgresql"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["gunicorn", "--bind", "0.0.0.0:5000", "firebase_test:app"]
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
 
 [workflows]
 runButton = "Project"
@@ -18,7 +18,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload firebase_test:app"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload app:app"
 
 [[workflows.workflow]]
 name = "Start application"
@@ -26,7 +26,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload firebase_test:app"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload app:app"
 waitForPort = 5000
 
 [[ports]]
