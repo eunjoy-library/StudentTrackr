@@ -156,13 +156,13 @@ document.addEventListener('DOMContentLoaded', function() {
             timeRangeText = '14:25 ~ 15:50';
         } else {
             periodText = '시간 외';
-            timeRangeText = '도서실 이용시간이 아닙니다';
+            timeRangeText = '모든 시간 이용 가능';
         }
         
-        // 주말인 경우 시간 외로 표시
+        // 주말인 경우 시간 외로 표시 (주말도 이용 가능)
         if (now.getDay() === 0 || now.getDay() === 6) {
             periodText = '시간 외';
-            timeRangeText = '주말은 도서실 이용이 불가합니다';
+            timeRangeText = '모든 시간 이용 가능';
         }
         
         // 교시 정보 업데이트
@@ -203,17 +203,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (studentIdInput) {
         studentIdInput.addEventListener('input', function() {
             const currentPeriodText = currentPeriod ? currentPeriod.textContent : '';
-            const isRegularHours = currentPeriodText !== '시간 외' && currentPeriodText !== '4교시';
+            const is4thPeriod = currentPeriodText === '4교시';
             
-            // 정규 시간이고 학번이 5자리 이상인 경우 버튼 활성화
-            if (isRegularHours && this.value.trim().length >= 5) {
+            // 4교시가 아니고 학번이 5자리 이상인 경우 버튼 활성화 (모든 시간대 허용)
+            if (!is4thPeriod && this.value.trim().length >= 5) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
-            } else if (!isRegularHours) {
-                // 시간 외인 경우 버튼 비활성화 유지
+            } else if (is4thPeriod) {
+                // 4교시인 경우에만 버튼 비활성화 유지
                 submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i><span id="submitBtnText">4교시는 도서실 이용 시간이 아닙니다</span>';
             } else {
-                // 정규 시간이지만 학번이 짧은 경우
+                // 학번이 짧은 경우
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>출석 정보 확인';
             }

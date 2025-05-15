@@ -182,7 +182,11 @@ def get_period_memo(date, period):
 def get_current_period():
     """
     Determine the current class period based on current time (Korean time)
-    Returns period number (1-10) or 0 if outside scheduled periods or during 4th period
+    Returns period number (1-10), -1 for time outside scheduled periods, or 0 for 4th period
+    
+    -1 = 시간 외 (모든 시간대에 출석 허용)
+    0  = 4교시 (출석 불가)
+    1~10 = 해당 교시
     """
     # 한국 시간 기준으로 현재 시간 가져오기
     now = datetime.now(KST).time()
@@ -194,7 +198,7 @@ def get_current_period():
             if period == 4:
                 return 0  # 4교시는 이용 불가
             return period
-    return 0  # 교시가 아닌 시간일 경우
+    return -1  # 교시가 아닌 시간일 경우 (-1로 변경하여 시간 외 구분)
     
 def get_current_period_attendance_count():
     """
