@@ -512,14 +512,25 @@ def load_attendance():
                     date_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
                     logging.warning(f"기본값으로 현재 시간 사용: {date_time_str}")
             
-            attendances_list.append({
+            # 새 필드 우선 사용
+            record = {
                 '출석일': date_str,
                 '출석일_표시': date_time_str,  # 시간과 초까지 표시 (YYYY-MM-DD HH:MM:SS)
                 '교시': attendance.get('period', ''),
                 '학번': attendance.get('student_id', ''),
                 '이름': attendance.get('name', ''),
                 '공강좌석번호': attendance.get('seat', '')
-            })
+            }
+            
+            # 디스플레이용 시간 필드가 있으면 추가
+            if 'display_time' in attendance:
+                record['display_time'] = attendance['display_time']
+                
+            # 시간만 필드가 있으면 추가
+            if 'time_only' in attendance:
+                record['time_only'] = attendance['time_only']
+                
+            attendances_list.append(record)
     except Exception as e:
         logging.error(f"Firebase 출석 기록 로드 오류: {e}")
     

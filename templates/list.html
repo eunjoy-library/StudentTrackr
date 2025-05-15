@@ -211,8 +211,10 @@
                                 </div>
                             </td>
                             <td>
-                                {% if r['출석일_표시']|string == '2025-05-15 00:00:00' %}
-                                    {{ r['출석일'] }} 14:30:00
+                                {% if r.get('display_time') %}
+                                    {{ r['출석일'] }} {{ r['display_time'] }}
+                                {% elif r.get('time_only') %}
+                                    {{ r['출석일'] }} {{ r['time_only'] }}
                                 {% else %}
                                     {{ r['출석일_표시'] }}
                                 {% endif %}

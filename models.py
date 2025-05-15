@@ -156,7 +156,11 @@ def add_attendance(student_id, name, seat, period_text, custom_fields=None):
             now_korea = now
             logging.warning("pytz 모듈을 찾을 수 없어 한국 시간 적용 불가")
         
-        # 기본 레코드 생성    
+        # 기본 레코드 생성
+        # 타임스탬프 문자열 명확하게 생성 (HH:MM:SS 포맷)
+        time_str = now_korea.strftime('%H:%M:%S')
+        full_date_str = now_korea.strftime('%Y-%m-%d %H:%M:%S')
+            
         new_record = {
             "student_id": student_id,
             "name": name,
@@ -164,7 +168,9 @@ def add_attendance(student_id, name, seat, period_text, custom_fields=None):
             "period": period_text,
             "date": now_korea,  # 한국 시간 사용
             "local_time": now,  # 시스템 로컬 시간 (백업용)
-            "created_at": now_korea.strftime('%Y-%m-%d %H:%M:%S')  # 문자열 시간도 항상 저장
+            "created_at": full_date_str,  # 문자열 시간도 항상 저장
+            "time_only": time_str,  # 시:분:초만 문자열로 저장
+            "display_time": time_str  # 출력용 시간 값
         }
         
         # 추가 필드가 있는 경우 병합
