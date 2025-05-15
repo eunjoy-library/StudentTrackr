@@ -418,17 +418,27 @@ def load_attendance():
             # Firebase 문서를 딕셔너리로 변환
             date_obj = attendance.get('date')
             
-            # 날짜 객체 처리
+            # 날짜 객체 처리 - 타임존 문제 해결 및 시간 표시 개선
             if isinstance(date_obj, datetime):
+                # 타임존이 있는 경우 제거 (일관성 유지)
+                if date_obj.tzinfo:
+                    date_obj = date_obj.replace(tzinfo=None)
+                    
+                # 날짜와 시간 포맷팅
                 date_str = date_obj.strftime('%Y-%m-%d')
-                date_time_str = date_obj.strftime('%Y-%m-%d %H:%M')
+                date_time_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 # 문자열이나 타임스탬프인 경우 변환 시도
                 try:
                     if isinstance(date_obj, str):
                         date_obj = datetime.fromisoformat(date_obj)
+                    
+                    # 타임존이 있는 경우 제거
+                    if hasattr(date_obj, 'tzinfo') and date_obj.tzinfo:
+                        date_obj = date_obj.replace(tzinfo=None)
+                        
                     date_str = date_obj.strftime('%Y-%m-%d')
-                    date_time_str = date_obj.strftime('%Y-%m-%d %H:%M')
+                    date_time_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logging.error(f"날짜 변환 오류: {e}")
                     date_str = str(date_obj)
@@ -436,7 +446,7 @@ def load_attendance():
             
             attendances_list.append({
                 '출석일': date_str,
-                '출석일_표시': date_time_str,  # 시:분까지만 표시
+                '출석일_표시': date_time_str,  # 시간과 초까지 표시 (YYYY-MM-DD HH:MM:SS)
                 '교시': attendance.get('period', ''),
                 '학번': attendance.get('student_id', ''),
                 '이름': attendance.get('name', ''),
