@@ -78,9 +78,19 @@ try:
                 logging.info("Firebase 이미 초기화됨, 클라이언트 재사용")
                 
             # DB 연결 테스트
-            test_ref = db.collection('test').document('connection')
-            test_ref.set({'timestamp': firestore.SERVER_TIMESTAMP})
-            logging.info("Firebase 연결 테스트 성공")
+            try:
+                test_ref = db.collection('test').document('connection')
+                test_ref.set({'timestamp': datetime.now()})
+                logging.info("Firebase 연결 테스트 성공")
+            except Exception as test_error:
+                logging.error(f"Firebase 연결 테스트 실패: {test_error}")
+                
+            # models.py 초기화 - db 인스턴스 전달
+            import models
+            if models.setup_firebase(db):
+                logging.info("models.py Firebase 설정 완료")
+            else:
+                logging.error("models.py Firebase 설정 실패")
             
         except Exception as init_error:
             logging.error(f"Firebase 초기화 오류: {init_error}")

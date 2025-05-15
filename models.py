@@ -5,13 +5,6 @@ import logging
 import firebase_admin
 from firebase_admin import firestore
 
-# Firebase FieldFilter 임포트 시도
-try:
-    from firebase_admin.firestore import FieldFilter
-except ImportError:
-    # 구 버전 Firebase 지원
-    FieldFilter = None
-
 # 시간 측정 데코레이터 (성능 모니터링)
 def timing_decorator(func):
     """함수 실행 시간을 측정하는 데코레이터"""
@@ -24,27 +17,29 @@ def timing_decorator(func):
         return result
     return wrapper
 
-# Firebase 데이터베이스 참조 가져오기
+# Firebase 데이터베이스 참조 변수 (app.py에서 설정)
 db = None
-MAX_RETRIES = 3
-retry_count = 0
 
-while db is None and retry_count < MAX_RETRIES:
+# 전역 변수: Firebase 버전에 따른 FieldFilter
+field_filter_support = False
+
+# Firebase FieldFilter 지원 확인 및 설정 함수
+def setup_firebase(firestore_db):
+    """Firebase 클라이언트와 버전별 기능 지원 설정"""
+    global db, field_filter_support
+    
+    db = firestore_db
+    
+    # FieldFilter 지원 확인
     try:
-        # Firebase 클라이언트 가져오기 시도
-        db = firestore.client()
-        logging.info("Firebase 데이터베이스 연결 성공 (models.py)")
-    except ValueError:
-        # 앱이 초기화되지 않았을 때 app.py에서 초기화될 때까지 대기
-        retry_count += 1
-        if retry_count < MAX_RETRIES:
-            logging.warning(f"Firebase 초기화 대기 중... (시도 {retry_count}/{MAX_RETRIES})")
-            time.sleep(1)  # 1초 대기 후 재시도
-        else:
-            logging.error("Firebase 초기화 실패 (models.py)")
-    except Exception as e:
-        logging.error(f"Firebase 연결 오류: {e}")
-        break
+        from firebase_admin.firestore import FieldFilter
+        field_filter_support = True
+        logging.info("Firebase FieldFilter 지원 확인됨")
+    except ImportError:
+        field_filter_support = False
+        logging.info("Firebase FieldFilter 미지원 (구 버전 사용 중)")
+        
+    return db is not None
 
 # ================== [유틸리티 함수] ==================
 
@@ -58,8 +53,9 @@ def get_document_id(collection_ref, filters=None):
         query = collection_ref
         
         # Firebase 버전에 따라 다른 쿼리 방식 사용
-        if FieldFilter is not None:
+        if field_filter_support:
             # 신규 버전 Firebase - FieldFilter 사용 방식
+            from firebase_admin.firestore import FieldFilter
             for field, op, value in filters:
                 query = query.where(filter=FieldFilter(field, op, value))
         else:
