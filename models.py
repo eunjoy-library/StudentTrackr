@@ -89,6 +89,7 @@ def firestore_to_dict(doc):
 
 # ================== [출석 관련 함수] ==================
 
+@timing_decorator
 def add_attendance(student_id, name, seat, period_text):
     """출석 기록 추가"""
     try:
@@ -99,19 +100,21 @@ def add_attendance(student_id, name, seat, period_text):
         today_start = datetime.combine(today, datetime.min.time())
         today_end = datetime.combine(today, datetime.max.time())
         
-        # 오늘 같은 교시에 이미 출석했는지 확인
+        # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         existing_docs = attendances_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
-        ).where(
-            filter=FieldFilter("period", "==", period_text)
-        ).where(
-            filter=FieldFilter("date", ">=", today_start)
-        ).where(
-            filter=FieldFilter("date", "<=", today_end)
-        ).limit(1).get()
+        ).get()
         
+        # 클라이언트 측에서 필터링
         for doc in existing_docs:
-            return None  # 이미 출석한 경우 저장하지 않음
+            data = doc.to_dict()
+            doc_period = data.get("period")
+            doc_date = data.get("date")
+            
+            # 오늘 같은 교시에 이미 출석했는지 확인
+            if (doc_period == period_text and 
+                doc_date and doc_date >= today_start and doc_date <= today_end):
+                return None  # 이미 출석한 경우 저장하지 않음
         
         # 새 출석 기록 추가
         new_record = {
@@ -123,6 +126,7 @@ def add_attendance(student_id, name, seat, period_text):
         }
         
         doc_ref = attendances_ref.add(new_record)
+        logging.info(f"출석 기록 추가 성공: {student_id} ({name}), 교시: {period_text}")
         return doc_ref[1].id  # 문서 ID 반환
     except Exception as e:
         logging.error(f"출석 기록 추가 오류: {e}")
@@ -143,42 +147,62 @@ def get_attendances_by_student(student_id):
         return []
 
 
+@timing_decorator
 def get_recent_attendance(student_id, days=7):
     """최근 특정 일수 이내의 출석 기록 조회"""
     try:
         attendances_ref = db.collection('attendances')
         recent_date = datetime.now() - timedelta(days=days)
         
+        # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         docs = attendances_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
-        ).where(
-            filter=FieldFilter("date", ">=", recent_date)
-        ).order_by("date", direction=firestore.Query.DESCENDING).limit(1).get()
+        ).get()
+        
+        # 클라이언트 측에서 필터링
+        most_recent = None
+        most_recent_date = None
         
         for doc in docs:
-            return firestore_to_dict(doc)
+            data = doc.to_dict()
+            doc_date = data.get("date")
+            
+            # 최근 일수 이내 기록만 확인
+            if doc_date and doc_date >= recent_date:
+                # 가장 최근 기록 찾기
+                if most_recent_date is None or doc_date > most_recent_date:
+                    most_recent = doc
+                    most_recent_date = doc_date
+        
+        if most_recent:
+            return firestore_to_dict(most_recent)
         return None
     except Exception as e:
         logging.error(f"최근 출석 기록 조회 오류: {e}")
         return None
 
 
+@timing_decorator
 def get_recent_attendance_for_week(student_id, week_start_date):
     """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
     try:
         week_end_date = week_start_date + timedelta(days=5)  # 월요일부터 금요일까지
         attendances_ref = db.collection('attendances')
         
+        # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         docs = attendances_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
-        ).where(
-            filter=FieldFilter("date", ">=", week_start_date)
-        ).where(
-            filter=FieldFilter("date", "<", week_end_date)
-        ).limit(1).get()
+        ).get()
         
+        # 클라이언트 측에서 필터링
         for doc in docs:
-            return firestore_to_dict(doc)
+            data = doc.to_dict()
+            doc_date = data.get("date")
+            
+            # 특정 주의 기록만 확인
+            if doc_date and doc_date >= week_start_date and doc_date < week_end_date:
+                return firestore_to_dict(doc)
+                
         return None
     except Exception as e:
         logging.error(f"주간 출석 기록 조회 오류: {e}")
@@ -314,22 +338,27 @@ def get_all_memos():
 
 # ================== [경고 관련 함수] ==================
 
+@timing_decorator
 def is_student_warned(student_id):
     """학생이 현재 유효한 경고를 받았는지 확인"""
     try:
         now = datetime.now()
         warnings_ref = db.collection('warnings')
         
+        # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         docs = warnings_ref.where(
             filter=FieldFilter("student_id", "==", student_id)
-        ).where(
-            filter=FieldFilter("expiry_date", ">", now)
-        ).where(
-            filter=FieldFilter("is_active", "==", True)
-        ).limit(1).get()
+        ).get()
         
+        # 클라이언트 측에서 필터링
         for doc in docs:
-            return True, firestore_to_dict(doc)
+            warning_data = doc.to_dict()
+            is_active = warning_data.get('is_active', False)
+            expiry_date = warning_data.get('expiry_date')
+            
+            # 활성화되었고 만료되지 않은 경고만 반환
+            if is_active and expiry_date and expiry_date > now:
+                return True, firestore_to_dict(doc)
         return False, None
     except Exception as e:
         logging.error(f"경고 확인 오류: {e}")
