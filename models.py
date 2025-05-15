@@ -209,20 +209,30 @@ def get_recent_attendance_for_week(student_id, week_start_date):
         return None
 
 
+@timing_decorator
 def get_attendances_by_period(period, limit=50):
     """교시별 출석 기록 조회"""
     try:
         attendances_ref = db.collection('attendances')
+        # 단일 필드만 쿼리 (복합 인덱스 문제 해결)
         docs = attendances_ref.where(
             filter=FieldFilter("period", "==", period)
-        ).order_by("date", direction=firestore.Query.DESCENDING).limit(limit).get()
+        ).get()
         
-        return [firestore_to_dict(doc) for doc in docs]
+        # 클라이언트 측에서 정렬
+        records = [firestore_to_dict(doc) for doc in docs]
+        
+        # 날짜 기준 내림차순 정렬
+        records.sort(key=lambda x: x.get('date', datetime.min), reverse=True)
+        
+        # 요청된 개수만큼 반환
+        return records[:limit]
     except Exception as e:
         logging.error(f"교시별 출석 기록 조회 오류: {e}")
         return []
 
 
+@timing_decorator
 def get_today_attendances():
     """오늘의 출석 기록 조회"""
     try:
@@ -230,14 +240,25 @@ def get_today_attendances():
         today_start = datetime.combine(today, datetime.min.time())
         today_end = datetime.combine(today, datetime.max.time())
         
+        # Firebase의 복합 인덱스 문제 해결을 위한 코드
         attendances_ref = db.collection('attendances')
-        docs = attendances_ref.where(
-            filter=FieldFilter("date", ">=", today_start)
-        ).where(
-            filter=FieldFilter("date", "<=", today_end)
-        ).order_by("date", direction=firestore.Query.DESCENDING).get()
         
-        return [firestore_to_dict(doc) for doc in docs]
+        # 모든 출석 기록 가져오기 (오늘 날짜로 필터링 없이)
+        all_docs = attendances_ref.get()
+        
+        # 클라이언트에서 오늘 기록만 필터링
+        today_records = []
+        for doc in all_docs:
+            data = doc.to_dict()
+            doc_date = data.get("date")
+            
+            if doc_date and doc_date >= today_start and doc_date <= today_end:
+                today_records.append(firestore_to_dict(doc))
+        
+        # 날짜 기준 내림차순 정렬
+        today_records.sort(key=lambda x: x.get('date', datetime.min), reverse=True)
+        
+        return today_records
     except Exception as e:
         logging.error(f"오늘의 출석 기록 조회 오류: {e}")
         return []
