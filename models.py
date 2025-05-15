@@ -26,6 +26,31 @@ field_filter_support = False
 # 전역 변수: Firebase FieldFilter 클래스
 FieldFilter = None  # 초기값은 None으로 설정
 
+# 캐싱 시스템 - 성능 최적화를 위한 메모리 캐시
+_cache = {
+    'student_attendance': {},  # 학생별 출석 기록 캐시
+    'warnings': {},           # 경고 기록 캐시
+    'recent_lookups': set(),  # 최근 조회된 학생 ID 모음 (자주 조회되는 항목 파악)
+    'cache_ttl': 60,          # 캐시 유효 시간 (초)
+    'last_updated': {}        # 각 캐시별 마지막 업데이트 시간
+}
+
+def clear_cache(cache_key=None):
+    """캐시 데이터 초기화 함수"""
+    global _cache
+    if cache_key:
+        if cache_key in _cache:
+            _cache[cache_key] = {} if isinstance(_cache[cache_key], dict) else type(_cache[cache_key])()
+            _cache['last_updated'][cache_key] = time.time()
+    else:
+        _cache = {
+            'student_attendance': {},
+            'warnings': {},
+            'recent_lookups': set(),
+            'cache_ttl': 60,
+            'last_updated': {}
+        }
+
 # Firebase FieldFilter 지원 확인 및 설정 함수
 def setup_firebase(firestore_db):
     """Firebase 클라이언트와 버전별 기능 지원 설정"""
