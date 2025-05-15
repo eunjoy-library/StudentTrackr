@@ -195,24 +195,17 @@ def get_current_period_attendance_count():
         
     period_text = f"{current_period}교시"
     
-    # 데이터베이스에서 오늘의 현재 교시 출석 수 확인
+    # Firebase에서 오늘의 현재 교시 출석 수 확인
     count = 0
     try:
-        today_start = datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start + timedelta(days=1)
+        # Firebase에서 오늘 데이터 가져오기
+        today_attendances = models.get_today_attendances()
         
-        # 타임존 제거 후 쿼리
-        today_start = today_start.replace(tzinfo=None)
-        today_end = today_end.replace(tzinfo=None)
+        # 현재 교시에 해당하는 출석 데이터 필터링
+        count = sum(1 for attendance in today_attendances if attendance.get('period') == period_text)
         
-        # 당일 현재 교시 출석 기록 수 조회
-        count = Attendance.query.filter(
-            Attendance.date >= today_start,
-            Attendance.date < today_end,
-            Attendance.period == period_text
-        ).count()
     except Exception as e:
-        logging.error(f"현재 교시 출석 인원 데이터베이스 조회 오류: {e}")
+        logging.error(f"현재 교시 출석 인원 Firebase 조회 오류: {e}")
                 
     return count
 
@@ -302,7 +295,7 @@ def check_attendance(student_id, admin_override=False):
     
     # 경고 여부 확인 (빠른 경로 확인 후에만 수행)
     start_time = time.time()  # 실행 시작 시간 기록
-    is_warned, warning_info = Warning.is_student_warned(student_id)
+    is_warned, warning_info = models.is_student_warned(student_id)
     end_time = time.time()
     print(f"[is_student_warned] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
         
@@ -323,7 +316,7 @@ def check_attendance(student_id, admin_override=False):
     
     # 이번 주 출석 기록 확인 (단일 쿼리로 처리)
     start_time = time.time()  # 실행 시작 시간 기록
-    week_attendance = Attendance.get_recent_attendance_for_week(student_id, this_week_monday)
+    week_attendance = models.get_recent_attendance_for_week(student_id, this_week_monday)
     end_time = time.time()
     print(f"[get_recent_attendance_for_week] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
     
@@ -337,12 +330,27 @@ def check_attendance(student_id, admin_override=False):
     else:
         # 이번 주에 출석하지 않은 경우 최근 출석 기록만 확인
         start_time = time.time()  # 실행 시작 시간 기록
-        last_attendance = Attendance.get_recent_attendance(student_id, days=365)
+        last_attendance = models.get_recent_attendance(student_id, days=365)
         end_time = time.time()
         print(f"[get_recent_attendance] 실행 시간: {(end_time - start_time)*1000:.2f} ms")
     
     # 날짜를 문자열로 변환
-    last_date_str = last_attendance.date.strftime('%Y-%m-%d') if last_attendance else None
+    if last_attendance:
+        # Firebase는 datetime 객체를 반환하므로 직접 포맷팅
+        date_obj = last_attendance.get('date')
+        if isinstance(date_obj, datetime):
+            last_date_str = date_obj.strftime('%Y-%m-%d')
+        else:
+            # 문자열이거나 타임스탬프인 경우
+            try:
+                if isinstance(date_obj, str):
+                    date_obj = datetime.fromisoformat(date_obj)
+                last_date_str = date_obj.strftime('%Y-%m-%d')
+            except Exception as e:
+                logging.error(f"날짜 변환 오류: {e}")
+                last_date_str = str(date_obj)
+    else:
+        last_date_str = None
     
     # 결과 반환 (이번 주 출석 여부, 마지막 출석일, 경고 여부, 경고 정보)
     return weekly_attendance_exists, last_date_str, False, None
