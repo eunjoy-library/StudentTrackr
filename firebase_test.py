@@ -1,44 +1,48 @@
-# 현재 워크플로우가 이 파일을 실행하고 있습니다.
-# 실제 앱을 실행하도록 app.py를 임포트하여 사용합니다.
+# Firebase 테스트를 건너뛰고 실제 앱을 실행합니다.
+# 메인 페이지로 자동 리디렉션을 위한 코드입니다.
 
-from app import app as real_app
-import os
-import logging
+from flask import Flask, redirect, url_for
 
-# Firebase 테스트 라우트는 /firebase-test로 이동합니다
-@real_app.route('/firebase-test')
-def firebase_test():
+# 앱 생성
+app = Flask(__name__)
+
+# 루트 경로를 실제 앱으로 리디렉션
+@app.route('/')
+def index():
+    # 간단한 메시지와 자동 리디렉션
     return """
-    <h1>Firebase 테스트 페이지</h1>
-    <p>이 페이지는 Firebase 연결을 테스트하기 위한 페이지입니다.</p>
-    <p><a href="/firebase-test/test">Firebase 저장 테스트 페이지로 이동</a></p>
+    <html>
+    <head>
+        <meta http-equiv="refresh" content="0;url=/attendance">
+        <title>도서실 출석 시스템</title>
+    </head>
+    <body>
+        <h1>도서실 출석 시스템으로 이동합니다...</h1>
+        <p>자동으로 이동하지 않는 경우 <a href="/attendance">여기</a>를 클릭하세요.</p>
+        <script>
+            window.location.href = "/attendance";
+        </script>
+    </body>
+    </html>
     """
 
-# ✅ 테스트 라우트: /firebase-test/test 로 접속 시 Firebase에 데이터 저장
-@real_app.route('/firebase-test/test')
-def firebase_test_save():
-    try:
-        from app import models
-        # Firebase가 앱에서 초기화되지 않았으면 오류 메시지
-        if models.db is None:
-            return "⚠️ Firebase가 초기화되지 않았습니다. Firebase 키를 설정해주세요.<br/><br/>" + \
-                   "Firebase 설정 방법:<br/>" + \
-                   "1. Firebase 콘솔에서 프로젝트 생성<br/>" + \
-                   "2. 서비스 계정 키(Service Account Key) 생성<br/>" + \
-                   "3. 키 파일을 firebase-key.json으로 저장<br/>" + \
-                   "4. 환경변수 FIREBASE_PROJECT_ID, FIREBASE_API_KEY, FIREBASE_APP_ID 설정"
-        
-        # Firebase에 테스트 데이터 저장 (실제 앱의 함수 사용)
-        doc_id = models.add_attendance("20240101", "홍길동", "A1", "1교시")
-        if doc_id:
-            return f"✅ Firebase에 출석 기록이 성공적으로 저장되었습니다! 문서 ID: {doc_id}"
-        else:
-            return "❌ Firebase 저장 실패: 중복된 데이터 또는 알 수 없는 오류"
-    except Exception as e:
-        logging.error(f"Firebase 저장 오류: {e}")
-        return f"❌ Firebase 저장 실패: {str(e)}"
-
-# 실제 앱 객체 사용
-app = real_app
+# 다른 모든 경로도 실제 앱으로 위임
+@app.route('/<path:path>')
+def catch_all(path):
+    # 실제 앱 임포트 (여기서 임포트해야 순환 참조 방지)
+    from app import app as real_app
+    
+    # 실제 앱의 view 함수 찾기
+    view_function = real_app.view_functions.get(path)
+    if view_function:
+        return view_function()
+    else:
+        # 실제 앱의 url_map에서 일치하는 경로 찾기
+        for rule in real_app.url_map.iter_rules():
+            if rule.endpoint == path:
+                return redirect(rule.rule)
+    
+    # 기본적으로 출석 페이지로 리디렉션
+    return redirect('/attendance')
 if __name__ == '__main__':
     app.run(debug=True)
