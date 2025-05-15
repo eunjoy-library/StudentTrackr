@@ -11,3 +11,4 @@ instance/
 # Replit 관련
 .replit
 *.swp
+firebase-key.json

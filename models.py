@@ -1,244 +1,348 @@
 from datetime import datetime, timedelta
 import os
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+import logging
+import firebase_admin
+from firebase_admin import firestore
+from firebase_admin.firestore import FieldFilter
 
+# Firebase 데이터베이스 참조 가져오기
+try:
+    db = firestore.client()
+except ValueError:
+    # 앱이 초기화되지 않았을 때 예외 처리
+    db = None
 
-class Base(DeclarativeBase):
-    pass
+# ================== [유틸리티 함수] ==================
 
-
-db = SQLAlchemy(model_class=Base)
-
-
-class Attendance(db.Model):
-    """학생 출석 기록 모델"""
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.String(20), nullable=False, index=True)
-    name = db.Column(db.String(50), nullable=False)
-    seat = db.Column(db.String(20), nullable=True)
-    period = db.Column(db.String(20), nullable=True)
-    date = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+def get_document_id(collection_ref, filters=None):
+    """필터 조건에 맞는the  문서 ID 찾기"""
+    if filters is None:
+        return None
     
-    @staticmethod
-    def add_attendance(student_id, name, seat, period_text):
-        """출석 기록 추가"""
-        today = datetime.now().date()
-        existing = Attendance.query.filter_by(
-            student_id=student_id,
-            period=period_text,
-            date=today
-        ).first()
-
-        if existing:
-            return  # 이미 출석한 경우 저장하지 않음
-
-        new_record = Attendance()
-        new_record.student_id = student_id
-        new_record.name = name
-        new_record.seat = seat
-        new_record.period = period_text
-        new_record.date = today
-        db.session.add(new_record)
-        db.session.commit()
-        return new_record
+    query = collection_ref
+    for field, op, value in filters:
+        query = query.where(filter=FieldFilter(field, op, value))
     
-    @staticmethod
-    def get_attendances_by_student(student_id):
-        """학생 ID별 모든 출석 기록 조회"""
-        return Attendance.query.filter_by(student_id=student_id).order_by(Attendance.date.desc()).all()
-    
-    @staticmethod
-    def get_recent_attendance(student_id, days=7):
-        """최근 특정 일수 이내의 출석 기록 조회"""
-        now = datetime.utcnow()
-        recent_date = now - timedelta(days=days)
-        return Attendance.query.filter(
-            Attendance.student_id == student_id,
-            Attendance.date >= recent_date
-        ).order_by(Attendance.date.desc()).first()
+    docs = query.limit(1).get()
+    for doc in docs:
+        return doc.id
+    return None
+
+
+def firestore_to_dict(doc):
+    """Firestore 문서를 딕셔너리로 변환"""
+    if doc is None:
+        return None
+    data = doc.to_dict()
+    data['id'] = doc.id
+    return data
+
+
+# ================== [출석 관련 함수] ==================
+
+def add_attendance(student_id, name, seat, period_text):
+    """출석 기록 추가"""
+    try:
+        attendances_ref = db.collection('attendances')
         
-    @staticmethod
-    def get_recent_attendance_for_week(student_id, week_start_date):
-        """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
+        # 이미 오늘 같은 교시에 출석했는지 확인
+        today = datetime.now().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        
+        # 오늘 같은 교시에 이미 출석했는지 확인
+        existing_docs = attendances_ref.where(
+            filter=FieldFilter("student_id", "==", student_id)
+        ).where(
+            filter=FieldFilter("period", "==", period_text)
+        ).where(
+            filter=FieldFilter("date", ">=", today_start)
+        ).where(
+            filter=FieldFilter("date", "<=", today_end)
+        ).limit(1).get()
+        
+        for doc in existing_docs:
+            return None  # 이미 출석한 경우 저장하지 않음
+        
+        # 새 출석 기록 추가
+        new_record = {
+            "student_id": student_id,
+            "name": name,
+            "seat": seat,
+            "period": period_text,
+            "date": datetime.now()
+        }
+        
+        doc_ref = attendances_ref.add(new_record)
+        return doc_ref[1].id  # 문서 ID 반환
+    except Exception as e:
+        logging.error(f"출석 기록 추가 오류: {e}")
+        return None
+
+
+def get_attendances_by_student(student_id):
+    """학생 ID별 모든 출석 기록 조회"""
+    try:
+        attendances_ref = db.collection('attendances')
+        docs = attendances_ref.where(
+            filter=FieldFilter("student_id", "==", student_id)
+        ).order_by("date", direction=firestore.Query.DESCENDING).get()
+        
+        return [firestore_to_dict(doc) for doc in docs]
+    except Exception as e:
+        logging.error(f"학생별 출석 기록 조회 오류: {e}")
+        return []
+
+
+def get_recent_attendance(student_id, days=7):
+    """최근 특정 일수 이내의 출석 기록 조회"""
+    try:
+        attendances_ref = db.collection('attendances')
+        recent_date = datetime.now() - timedelta(days=days)
+        
+        docs = attendances_ref.where(
+            filter=FieldFilter("student_id", "==", student_id)
+        ).where(
+            filter=FieldFilter("date", ">=", recent_date)
+        ).order_by("date", direction=firestore.Query.DESCENDING).limit(1).get()
+        
+        for doc in docs:
+            return firestore_to_dict(doc)
+        return None
+    except Exception as e:
+        logging.error(f"최근 출석 기록 조회 오류: {e}")
+        return None
+
+
+def get_recent_attendance_for_week(student_id, week_start_date):
+    """특정 주의 출석 기록 조회 (월요일부터 금요일까지)"""
+    try:
         week_end_date = week_start_date + timedelta(days=5)  # 월요일부터 금요일까지
-        return Attendance.query.filter(
-            Attendance.student_id == student_id,
-            Attendance.date >= week_start_date,
-            Attendance.date < week_end_date
-        ).first()
-    
-    @staticmethod
-    def get_attendances_by_period(period, limit=50):
-        """교시별 출석 기록 조회"""
-        return Attendance.query.filter_by(period=period).order_by(Attendance.date.desc()).limit(limit).all()
-    
-    @staticmethod
-    def get_today_attendances():
-        """오늘의 출석 기록 조회"""
-        today = datetime.utcnow().date()
-        tomorrow = today + timedelta(days=1)
-        return Attendance.query.filter(
-            Attendance.date >= today,
-            Attendance.date < tomorrow
-        ).order_by(Attendance.date.desc()).all()
-    
-    @staticmethod
-    def delete_attendance(attendance_id):
-        """특정 출석 기록 삭제"""
-        attendance = Attendance.query.get(attendance_id)
-        if attendance:
-            db.session.delete(attendance)
-            db.session.commit()
-            return True
+        attendances_ref = db.collection('attendances')
+        
+        docs = attendances_ref.where(
+            filter=FieldFilter("student_id", "==", student_id)
+        ).where(
+            filter=FieldFilter("date", ">=", week_start_date)
+        ).where(
+            filter=FieldFilter("date", "<", week_end_date)
+        ).limit(1).get()
+        
+        for doc in docs:
+            return firestore_to_dict(doc)
+        return None
+    except Exception as e:
+        logging.error(f"주간 출석 기록 조회 오류: {e}")
+        return None
+
+
+def get_attendances_by_period(period, limit=50):
+    """교시별 출석 기록 조회"""
+    try:
+        attendances_ref = db.collection('attendances')
+        docs = attendances_ref.where(
+            filter=FieldFilter("period", "==", period)
+        ).order_by("date", direction=firestore.Query.DESCENDING).limit(limit).get()
+        
+        return [firestore_to_dict(doc) for doc in docs]
+    except Exception as e:
+        logging.error(f"교시별 출석 기록 조회 오류: {e}")
+        return []
+
+
+def get_today_attendances():
+    """오늘의 출석 기록 조회"""
+    try:
+        today = datetime.now().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        
+        attendances_ref = db.collection('attendances')
+        docs = attendances_ref.where(
+            filter=FieldFilter("date", ">=", today_start)
+        ).where(
+            filter=FieldFilter("date", "<=", today_end)
+        ).order_by("date", direction=firestore.Query.DESCENDING).get()
+        
+        return [firestore_to_dict(doc) for doc in docs]
+    except Exception as e:
+        logging.error(f"오늘의 출석 기록 조회 오류: {e}")
+        return []
+
+
+def delete_attendance(doc_id):
+    """특정 출석 기록 삭제"""
+    try:
+        attendances_ref = db.collection('attendances')
+        attendances_ref.document(doc_id).delete()
+        return True
+    except Exception as e:
+        logging.error(f"출석 기록 삭제 오류: {e}")
         return False
 
 
-class PeriodMemo(db.Model):
-    """교시별 메모 모델"""
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, nullable=False, index=True)
-    period = db.Column(db.String(20), nullable=False)
-    memo_text = db.Column(db.Text, nullable=True)
-    
-    @staticmethod
-    def save_memo(date_str, period, memo_text):
-        """교시별 메모 저장"""
-        try:
-            # 날짜 문자열을 날짜 객체로 변환
-            if isinstance(date_str, str):
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-            else:
-                date_obj = date_str
-                
-            # 이미 존재하는 메모인지 확인
-            existing_memo = PeriodMemo.query.filter_by(
-                date=date_obj,
-                period=period
-            ).first()
+# ================== [메모 관련 함수] ==================
+
+def save_memo(date_str, period, memo_text):
+    """교시별 메모 저장"""
+    try:
+        # 날짜 문자열을 날짜 객체로 변환
+        if isinstance(date_str, str):
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        else:
+            date_obj = date_str
             
-            if existing_memo:
-                # 기존 메모 업데이트
-                existing_memo.memo_text = memo_text
-            else:
-                # 새 메모 생성
-                new_memo = PeriodMemo()
-                new_memo.date = date_obj
-                new_memo.period = period
-                new_memo.memo_text = memo_text
-                db.session.add(new_memo)
-                
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            print(f"메모 저장 오류: {e}")
-            return False
-    
-    @staticmethod
-    def get_memo(date_str, period):
-        """특정 날짜와 교시의 메모 조회"""
-        try:
-            # 날짜 문자열을 날짜 객체로 변환
-            if isinstance(date_str, str):
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-            else:
-                date_obj = date_str
-                
-            memo = PeriodMemo.query.filter_by(
-                date=date_obj,
-                period=period
-            ).first()
+        memos_ref = db.collection('period_memos')
+        
+        # 이미 존재하는 메모인지 확인
+        date_str_formatted = date_obj.strftime('%Y-%m-%d')
+        doc_id = get_document_id(memos_ref, [
+            ("date", "==", date_str_formatted),
+            ("period", "==", period)
+        ])
+        
+        if doc_id:
+            # 기존 메모 업데이트
+            memos_ref.document(doc_id).update({"memo_text": memo_text})
+        else:
+            # 새 메모 생성
+            memos_ref.add({
+                "date": date_str_formatted,
+                "period": period,
+                "memo_text": memo_text
+            })
             
-            return memo.memo_text if memo else ""
-        except Exception as e:
-            print(f"메모 조회 오류: {e}")
-            return ""
-    
-    @staticmethod
-    def get_all_memos():
-        """모든 메모 조회"""
-        try:
-            memos = PeriodMemo.query.order_by(PeriodMemo.date.desc()).all()
-            return [
-                {
-                    "날짜": memo.date.strftime('%Y-%m-%d'),
-                    "교시": memo.period,
-                    "메모": memo.memo_text
-                }
-                for memo in memos
-            ]
-        except Exception as e:
-            print(f"전체 메모 조회 오류: {e}")
-            return []
+        return True
+    except Exception as e:
+        logging.error(f"메모 저장 오류: {e}")
+        return False
 
 
-class Warning(db.Model):
-    """경고 받은 학생 정보 모델"""
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.String(20), nullable=False, index=True)
-    student_name = db.Column(db.String(100), nullable=False)
-    warning_date = db.Column(db.DateTime, default=datetime.utcnow)
-    expiry_date = db.Column(db.DateTime, nullable=False)  # 경고 만료일
-    reason = db.Column(db.Text, nullable=True)  # 경고 사유
-    is_active = db.Column(db.Boolean, default=True)  # 경고 활성화 여부
+def get_memo(date_str, period):
+    """특정 날짜와 교시의 메모 조회"""
+    try:
+        # 날짜 문자열을 날짜 객체로 변환
+        if isinstance(date_str, str):
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        else:
+            date_obj = date_str
+            
+        date_str_formatted = date_obj.strftime('%Y-%m-%d')
+        memos_ref = db.collection('period_memos')
+        
+        docs = memos_ref.where(
+            filter=FieldFilter("date", "==", date_str_formatted)
+        ).where(
+            filter=FieldFilter("period", "==", period)
+        ).limit(1).get()
+        
+        for doc in docs:
+            return doc.to_dict().get("memo_text", "")
+        return ""
+    except Exception as e:
+        logging.error(f"메모 조회 오류: {e}")
+        return ""
 
-    @staticmethod
-    def is_student_warned(student_id):
-        """학생이 현재 유효한 경고를 받았는지 확인"""
-        now = datetime.utcnow()
-        warning = Warning.query.filter(
-            Warning.student_id == student_id,
-            Warning.expiry_date > now,
-            Warning.is_active == True
-        ).first()
-        return warning is not None, warning
 
-    @staticmethod
-    def add_warning(student_id, student_name, days=30, reason=None):
-        """학생에게 경고 추가 (기본 30일 경고)"""
-        now = datetime.utcnow()
+def get_all_memos():
+    """모든 메모 조회"""
+    try:
+        memos_ref = db.collection('period_memos')
+        docs = memos_ref.order_by("date", direction=firestore.Query.DESCENDING).get()
+        
+        return [
+            {
+                "날짜": doc.to_dict().get("date"),
+                "교시": doc.to_dict().get("period"),
+                "메모": doc.to_dict().get("memo_text", "")
+            }
+            for doc in docs
+        ]
+    except Exception as e:
+        logging.error(f"전체 메모 조회 오류: {e}")
+        return []
+
+
+# ================== [경고 관련 함수] ==================
+
+def is_student_warned(student_id):
+    """학생이 현재 유효한 경고를 받았는지 확인"""
+    try:
+        now = datetime.now()
+        warnings_ref = db.collection('warnings')
+        
+        docs = warnings_ref.where(
+            filter=FieldFilter("student_id", "==", student_id)
+        ).where(
+            filter=FieldFilter("expiry_date", ">", now)
+        ).where(
+            filter=FieldFilter("is_active", "==", True)
+        ).limit(1).get()
+        
+        for doc in docs:
+            return True, firestore_to_dict(doc)
+        return False, None
+    except Exception as e:
+        logging.error(f"경고 확인 오류: {e}")
+        return False, None
+
+
+def add_warning(student_id, student_name, days=30, reason=None):
+    """학생에게 경고 추가 (기본 30일 경고)"""
+    try:
+        now = datetime.now()
         expiry_date = now + timedelta(days=days)
         
-        warning = Warning()
-        warning.student_id = student_id
-        warning.student_name = student_name
-        warning.warning_date = now
-        warning.expiry_date = expiry_date
-        warning.reason = reason
-        warning.is_active = True
+        warnings_ref = db.collection('warnings')
+        doc_ref = warnings_ref.add({
+            "student_id": student_id,
+            "student_name": student_name,
+            "warning_date": now,
+            "expiry_date": expiry_date,
+            "reason": reason,
+            "is_active": True
+        })
         
-        db.session.add(warning)
-        db.session.commit()
-        return warning
+        return doc_ref[1].id  # 문서 ID 반환
+    except Exception as e:
+        logging.error(f"경고 추가 오류: {e}")
+        return None
 
-    @staticmethod
-    def remove_warning(warning_id):
-        """경고 제거 (활성화 상태만 변경)"""
-        warning = Warning.query.get(warning_id)
-        if warning:
-            warning.is_active = False
-            db.session.commit()
-            return True
+
+def remove_warning(warning_id):
+    """경고 제거 (활성화 상태만 변경)"""
+    try:
+        warnings_ref = db.collection('warnings')
+        warnings_ref.document(warning_id).update({"is_active": False})
+        return True
+    except Exception as e:
+        logging.error(f"경고 비활성화 오류: {e}")
         return False
-        
-    @staticmethod
-    def delete_warning(warning_id):
-        """경고 완전 삭제"""
-        warning = Warning.query.get(warning_id)
-        if warning:
-            db.session.delete(warning)
-            db.session.commit()
-            return True
+
+
+def delete_warning(warning_id):
+    """경고 완전 삭제"""
+    try:
+        warnings_ref = db.collection('warnings')
+        warnings_ref.document(warning_id).delete()
+        return True
+    except Exception as e:
+        logging.error(f"경고 삭제 오류: {e}")
         return False
+
+
+def delete_all_warnings():
+    """모든 경고 삭제"""
+    try:
+        warnings_ref = db.collection('warnings')
+        docs = warnings_ref.get()
         
-    @staticmethod
-    def delete_all_warnings():
-        """모든 경고 삭제"""
-        try:
-            Warning.query.delete()
-            db.session.commit()
-            return True
-        except:
-            db.session.rollback()
-            return False
+        batch = db.batch()
+        for doc in docs:
+            batch.delete(doc.reference)
+        
+        batch.commit()
+        return True
+    except Exception as e:
+        logging.error(f"모든 경고 삭제 오류: {e}")
+        return False

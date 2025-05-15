@@ -1,8 +1,8 @@
 # ================== [IMPORTS] ==================
-
 # 표준 라이브러리
 import os
 import csv
+import json
 import logging
 from datetime import datetime, timedelta
 from collections import Counter
@@ -13,47 +13,49 @@ import pytz
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify, after_this_request, send_from_directory
 from dotenv import load_dotenv
 
-# 내부 모듈
-from models import db, Warning, Attendance, PeriodMemo
+# Firebase 관련 라이브러리
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # ================== [환경 변수 로드] ==================
-
 load_dotenv()  # .env 파일에서 환경 변수 읽어오기
-db_host = os.getenv("DB_HOST")
-print("DB_HOST:", db_host)  # 개발 중 확인용 (운영 시 제거 가능)
+
+# ================== [Firebase 초기화] ==================
+# Firebase 인증 정보 생성
+firebase_config = {
+    "type": "service_account",
+    "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
+    "private_key_id": "firebase-key-id",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+    "client_email": f"firebase-adminsdk@{os.environ.get('FIREBASE_PROJECT_ID')}.iam.gserviceaccount.com",
+    "client_id": "client-id",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk%40{os.environ.get('FIREBASE_PROJECT_ID')}.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
+# 인증 키 파일이 없으면 환경 변수에서 생성
+cred_path = "firebase-key.json"
+if not os.path.exists(cred_path):
+    with open(cred_path, "w") as f:
+        json.dump(firebase_config, f)
+
+# Firebase 초기화
+try:
+    cred = credentials.Certificate(cred_path)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    logging.info("Firebase 초기화 성공")
+except Exception as e:
+    logging.error(f"Firebase 초기화 중 오류 발생: {e}")
 
 # ================== [Flask 객체 생성] ==================
-
 app = Flask(__name__)
 
 # ================== [앱 설정] ==================
-
 app.secret_key = os.environ.get("SESSION_SECRET", "fallback")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///attendance.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# ================== [DB 초기화 및 생성] ==================
-
-db.init_app(app)
-with app.app_context():
-    db.create_all()
-    # 데이터베이스 초기화 및 확인
-    try:
-        from models import PeriodMemo, Warning, Attendance
-        
-        # 데이터베이스 연결 확인
-        attendance_count = Attendance.query.count()
-        warning_count = Warning.query.count()
-        memo_count = db.session.query(PeriodMemo).count()
-        
-        logging.info(f"데이터베이스 연결 성공: 출석 기록 {attendance_count}개, "
-                    f"경고 기록 {warning_count}개, 메모 {memo_count}개")
-    except Exception as e:
-        logging.error(f"데이터베이스 초기화 중 오류 발생: {e}")
 
 # ================== [한국 시간대 설정 및 로그 설정] ==================
 
