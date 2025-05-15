@@ -17,6 +17,9 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+# 내부 모듈 가져오기
+import models
+
 # ================== [환경 변수 로드] ==================
 load_dotenv()  # .env 파일에서 환경 변수 읽어오기
 
@@ -357,32 +360,56 @@ def check_attendance(student_id, admin_override=False):
 
 def load_attendance():
     """
-    Load all attendance records from database
+    Load all attendance records from Firebase
     Returns a list of dictionaries containing attendance records
     """
-    # 데이터베이스에서 출석 정보 로드
+    # Firebase에서 출석 정보 로드
     attendances_list = []
     try:
-        attendances = Attendance.query.order_by(Attendance.date.desc()).all()
+        # 모든 출석 기록 가져오기 (models.py에 별도 함수 추가 필요)
+        attendances = []
+        
+        # Firebase 컬렉션에서 모든 출석 문서 조회
+        if models.db:
+            attendances_ref = models.db.collection('attendances').order_by('date', direction=models.firestore.Query.DESCENDING).limit(1000).get()
+            attendances = [models.firestore_to_dict(doc) for doc in attendances_ref]
+        
         for attendance in attendances:
-            # 데이터베이스 모델을 딕셔너리로 변환
-            date_obj = attendance.date
+            # Firebase 문서를 딕셔너리로 변환
+            date_obj = attendance.get('date')
+            
+            # 날짜 객체 처리
+            if isinstance(date_obj, datetime):
+                date_str = date_obj.strftime('%Y-%m-%d')
+                date_time_str = date_obj.strftime('%Y-%m-%d %H:%M')
+            else:
+                # 문자열이나 타임스탬프인 경우 변환 시도
+                try:
+                    if isinstance(date_obj, str):
+                        date_obj = datetime.fromisoformat(date_obj)
+                    date_str = date_obj.strftime('%Y-%m-%d')
+                    date_time_str = date_obj.strftime('%Y-%m-%d %H:%M')
+                except Exception as e:
+                    logging.error(f"날짜 변환 오류: {e}")
+                    date_str = str(date_obj)
+                    date_time_str = str(date_obj)
+            
             attendances_list.append({
-                '출석일': date_obj.strftime('%Y-%m-%d'),
-                '출석일_표시': date_obj.strftime('%Y-%m-%d %H:%M'),  # 시:분까지만 표시
-                '교시': attendance.period,
-                '학번': attendance.student_id,
-                '이름': attendance.name,
-                '공강좌석번호': attendance.seat or ''
+                '출석일': date_str,
+                '출석일_표시': date_time_str,  # 시:분까지만 표시
+                '교시': attendance.get('period', ''),
+                '학번': attendance.get('student_id', ''),
+                '이름': attendance.get('name', ''),
+                '공강좌석번호': attendance.get('seat', '')
             })
     except Exception as e:
-        logging.error(f"데이터베이스 출석 기록 로드 오류: {e}")
+        logging.error(f"Firebase 출석 기록 로드 오류: {e}")
     
     return attendances_list
 
 def save_attendance(student_id, name, seat):
     """
-    Save attendance record to database (with Korean time)
+    Save attendance record to Firebase (with Korean time)
     """
     try:
         # 한국 시간 기준으로 현재 날짜와 시간 저장
@@ -390,10 +417,10 @@ def save_attendance(student_id, name, seat):
         period = get_current_period()
         period_text = f'{period}교시' if period > 0 else '시간 외'
         
-        # 데이터베이스에 출석 기록 저장
-        attendance = Attendance.add_attendance(student_id, name, seat, period_text)
+        # Firebase에 출석 기록 저장
+        doc_id = models.add_attendance(student_id, name, seat, period_text)
         
-        if attendance:
+        if doc_id:
             return True
         else:
             # 이미 있는 경우 (중복 출석 등) - 경고 메시지 없이 성공으로 처리
@@ -911,8 +938,19 @@ def admin_warnings():
         flash("관리자 로그인이 필요합니다.", "danger")
         return redirect('/admin')
         
-    # 모든 경고 목록 조회
-    warnings = Warning.query.order_by(Warning.warning_date.desc()).all()
+    # Firebase에서 모든 경고 목록 조회
+    warnings = []
+    try:
+        # models.py에서 warnings 컬렉션 쿼리
+        if models.db:
+            warnings_ref = models.db.collection('warnings').order_by('warning_date', direction=models.firestore.Query.DESCENDING).get()
+            warnings = [models.firestore_to_dict(doc) for doc in warnings_ref]
+            
+            # 문서 ID도 포함시키기
+            for i, warning in enumerate(warnings):
+                warnings[i]['id'] = warnings_ref[i].id
+    except Exception as e:
+        logging.error(f"경고 목록 조회 중 오류 발생: {e}")
     
     return render_template(
         'admin_warnings.html',
@@ -943,16 +981,16 @@ def add_warning():
         return redirect('/admin/warnings')
         
     # 경고 추가
-    warning = Warning.add_warning(student_id, student_name, days, reason)
+    warning_id = models.add_warning(student_id, student_name, days, reason)
     
-    if warning:
+    if warning_id:
         flash(f"{student_name}({student_id}) 학생에게 {days}일간의 도서실 이용 제한이 추가되었습니다.", "success")
     else:
         flash("경고 추가 중 오류가 발생했습니다.", "danger")
         
     return redirect('/admin/warnings')
 
-@app.route('/admin/warnings/remove/<int:warning_id>', methods=['POST'])
+@app.route('/admin/warnings/remove/<warning_id>', methods=['POST'])
 def remove_warning(warning_id):
     """학생 경고 해제 처리"""
     if not session.get('admin'):
@@ -960,14 +998,14 @@ def remove_warning(warning_id):
         return redirect('/admin')
         
     # 경고 해제
-    if Warning.remove_warning(warning_id):
+    if models.remove_warning(warning_id):
         flash("경고가 해제되었습니다.", "success")
     else:
         flash("경고 해제 중 오류가 발생했습니다.", "danger")
         
     return redirect('/admin/warnings')
 
-@app.route('/admin/warnings/delete/<int:warning_id>', methods=['POST'])
+@app.route('/admin/warnings/delete/<warning_id>', methods=['POST'])
 def delete_warning(warning_id):
     """학생 경고 완전 삭제 처리"""
     if not session.get('admin'):
@@ -975,7 +1013,7 @@ def delete_warning(warning_id):
         return redirect('/admin')
         
     # 경고 완전 삭제
-    if Warning.delete_warning(warning_id):
+    if models.delete_warning(warning_id):
         flash("경고가 완전히 삭제되었습니다.", "success")
     else:
         flash("경고 삭제 중 오류가 발생했습니다.", "danger")
@@ -990,7 +1028,7 @@ def delete_all_warnings():
         return redirect('/admin')
         
     # 모든 경고 삭제
-    if Warning.delete_all_warnings():
+    if models.delete_all_warnings():
         flash("모든 경고가 삭제되었습니다.", "success")
     else:
         flash("경고 삭제 중 오류가 발생했습니다.", "danger")
