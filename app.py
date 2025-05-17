@@ -42,7 +42,7 @@ db = None
 
 try:
     # ✅ 정확한 파일명 사용
-    cred = credentials.Certificate("firebase-key.json")
+
     
     # ✅ Firebase 앱 초기화
     if not firebase_admin._apps:
